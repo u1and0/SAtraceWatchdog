@@ -3,10 +3,11 @@
 from time import sleep
 from glob import iglob
 from pathlib import Path
+import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-
+SLEEPSEC = 10
 sns.set(style='whitegrid',
         palette='husl',
         font="IPAGothic",
@@ -18,25 +19,57 @@ sns.set(style='whitegrid',
             'image.cmap': 'viridis'
         })
 
-while True:
-    datadir = 'data/'
-    txts = {Path(i).stem for i in iglob(datadir + '*.txt')}
-    pngs = {Path(i).stem for i in iglob(datadir + '*.png')}
-    for base in txts - pngs:
-        with open(datadir + base + '.txt') as f:
-            setting = f.readline()
-            set_list = setting.strip(';')
-            print(set_list)
-        df = pd.read_csv(datadir + base + '.txt',
-                         sep='\s+',
-                         index_col=0,
-                         skiprows=1,
-                         skipfooter=1,
-                         names=['Min', 'Mean', 'Max'],
-                         engine='python')
-        df.Mean.plot(color='gray', linewidth=0.5)
-        plt.savefig(datadir + base + '.png')
-        plt.close()  # reset plot
-        print(
-            f'{pd.datetime.now()} Succeeded export image {datadir}{base}.png')
-    sleep(10)
+
+def config_parse_freq(conf_dict: dict, key: str):
+    """stringの周波数を単位変換してfloatで返す"""
+    val = conf_dict[key].split()
+    freq = int(val[0])
+    unit = val[-1]
+    return freq, unit
+
+
+def main():
+    while True:
+        datadir = 'data/'
+        txts = {Path(i).stem for i in iglob(datadir + '*.txt')}
+        pngs = {Path(i).stem for i in iglob(datadir + '*.png')}
+
+        # txtファイルだけあってpngがないファイルに対して実行
+        for base in txts - pngs:
+            # NA設定読み取り
+            with open(datadir + base + '.txt') as f:
+                line = f.readline()
+            conf_list = [i.split(maxsplit=1)
+                         for i in line.split(';')[:-1]]  # chomp last \n
+            conf_dict = {k[0]: k[-1] for k in conf_list}
+            center_freq, _ = config_parse_freq(conf_dict, ':FREQ:CENT')
+            span_freq, unit = config_parse_freq(conf_dict, ':FREQ:SPAN')
+            points = int(conf_dict[':SWE:POIN'])
+
+            # グラフ化
+            df = pd.read_csv(datadir + base + '.txt',
+                             sep='\s+',
+                             index_col=0,
+                             skiprows=1,
+                             skipfooter=1,
+                             names=[
+                                 conf_dict[':TRAC1:TYPE'],
+                                 conf_dict[':TRAC2:TYPE'],
+                                 conf_dict[':TRAC3:TYPE']
+                             ],
+                             engine='python')
+            df.index = np.linspace(center_freq - span_freq / 2,
+                                   center_freq + span_freq / 2, points)
+            df.index.name = unit
+
+            # iloc <= 1:Minhold 2:Aver 3:Maxhold
+            df.iloc[:, 2].plot(color='gray', linewidth=0.5, figsize=(12, 8))
+            plt.savefig(datadir + base + '.png')
+            plt.close()  # reset plot
+            print(f'{pd.datetime.now()}\
+                Succeeded export image {datadir}{base}.png')
+        sleep(SLEEPSEC)
+
+
+if __name__ == '__main__':
+    main()
