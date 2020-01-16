@@ -19,11 +19,14 @@ sns.set(style='whitegrid',
         })
 
 while True:
-    sleep(10)
     datadir = 'data/'
     txts = {Path(i).stem for i in iglob(datadir + '*.txt')}
     pngs = {Path(i).stem for i in iglob(datadir + '*.png')}
     for base in txts - pngs:
+        with open(datadir + base + '.txt') as f:
+            setting = f.readline()
+            set_list = setting.strip(';')
+            print(set_list)
         df = pd.read_csv(datadir + base + '.txt',
                          sep='\s+',
                          index_col=0,
@@ -31,7 +34,9 @@ while True:
                          skipfooter=1,
                          names=['Min', 'Mean', 'Max'],
                          engine='python')
-        df.Mean.plot()
+        df.Mean.plot(color='gray', linewidth=0.5)
         plt.savefig(datadir + base + '.png')
         plt.close()  # reset plot
-        print(f'Succeeded export image {datadir}{base}.png')
+        print(
+            f'{pd.datetime.now()} Succeeded export image {datadir}{base}.png')
+    sleep(10)
