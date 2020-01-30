@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""watchgrapht.py
+"""watchgrapht.py v0.0.0
 カレントディレクトリ下のtxtを定期的に監視して、
 グラフ化したものをpng出力する
 """
+import sys
 from time import sleep
 from glob import iglob
 from pathlib import Path
@@ -29,6 +30,7 @@ def config_parse_freq(conf_dict: dict, key: str):
     unit = val[-1]
     return freq, unit
 
+
 def read_conf(line):
     """1行目のデータからconfigを読み取りdictで返す"""
     conf_list = [i.split(maxsplit=1)
@@ -36,16 +38,19 @@ def read_conf(line):
     conf_dict = {k[0]: k[-1] for k in conf_list}
     return conf_dict
 
-def main(outdir, sleepsec):
+
+def main(outdir='.', sleepsec=10):
     pngdir = Path(outdir)
     if not pngdir.exists():
         pngdir.mkdir()
+        print(f'{pd.datetime.now()}\
+              make directory {pngdir.resolve()}')
     if not pngdir.is_dir():
         raise IOError('Directory {} does not exist'.format(outdir))
     while True:
         txts = {Path(i).stem for i in iglob('*.txt')}
         # append directory last '/'
-        out = outdir+'/' if not outdir[-1]=='/' else outdir
+        out = outdir + '/' if not outdir[-1] == '/' else outdir
         pngs = {Path(i).stem for i in iglob(out + '*.png')}
 
         # txtファイルだけあってpngがないファイルに対して実行
@@ -59,17 +64,17 @@ def main(outdir, sleepsec):
             points = int(conf_dict[':SWE:POIN'])
 
             # グラフ化
-            df = pd.read_csv(base + '.txt',
-                             sep='\s+',
-                             index_col=0,
-                             skiprows=1,
-                             skipfooter=1,
-                             names=[
-                                 conf_dict[':TRAC1:TYPE'],
-                                 conf_dict[':TRAC2:TYPE'],
-                                 conf_dict[':TRAC3:TYPE']
-                             ],
-                             engine='python')
+            df = pd.read_table(base + '.txt',
+                               sep='\s+',
+                               index_col=0,
+                               skiprows=1,
+                               skipfooter=1,
+                               names=[
+                                   conf_dict[':TRAC1:TYPE'],
+                                   conf_dict[':TRAC2:TYPE'],
+                                   conf_dict[':TRAC3:TYPE']
+                               ],
+                               engine='python')
             df.index = np.linspace(center_freq - span_freq / 2,
                                    center_freq + span_freq / 2, points)
             df.index.name = unit
@@ -84,4 +89,4 @@ def main(outdir, sleepsec):
 
 
 if __name__ == '__main__':
-    main('.', 10)
+    main(*sys.argv[1:])
