@@ -23,7 +23,7 @@ sns.set(style='whitegrid',
         })
 
 
-def config_parse_freq(conf_dict: dict, key: str):
+def config_parse_freq(conf_dict: dict, key: str) -> (int, str):
     """stringの周波数を単位変換してfloatで返す"""
     val = conf_dict[key].split()
     freq = int(val[0])
@@ -31,7 +31,7 @@ def config_parse_freq(conf_dict: dict, key: str):
     return freq, unit
 
 
-def read_conf(line):
+def read_conf(line: str) -> dict:
     """1行目のデータからconfigを読み取りdictで返す"""
     conf_list = [i.split(maxsplit=1)
                  for i in line.split(';')[:-1]]  # chomp last \n
@@ -46,12 +46,12 @@ def main(outdir='.', sleepsec=10):
         print(f'{pd.datetime.now()}\
               make directory {pngdir.resolve()}')
     if not pngdir.is_dir():
-        raise IOError('Directory {} does not exist'.format(outdir))
+        raise IOError(f'{pngdir.resolve()} is not directory')
     while True:
         txts = {Path(i).stem for i in iglob('*.txt')}
         # append directory last '/'
-        out = outdir + '/' if not outdir[-1] == '/' else outdir
-        pngs = {Path(i).stem for i in iglob(out + '*.png')}
+        out = str(pngdir.resolve()) + '/'
+        pngs = {Path(i).stem for i in iglob(str(out) + '*.png')}
 
         # txtファイルだけあってpngがないファイルに対して実行
         for base in txts - pngs:
