@@ -29,6 +29,12 @@ def config_parse_freq(conf_dict: dict, key: str):
     unit = val[-1]
     return freq, unit
 
+def read_conf(line):
+    """1行目のデータからconfigを読み取りdictで返す"""
+    conf_list = [i.split(maxsplit=1)
+                 for i in line.split(';')[:-1]]  # chomp last \n
+    conf_dict = {k[0]: k[-1] for k in conf_list}
+    return conf_dict
 
 def main(outdir, sleepsec):
     pngdir = Path(outdir)
@@ -43,9 +49,7 @@ def main(outdir, sleepsec):
             # NA設定読み取り
             with open(base + '.txt') as f:
                 line = f.readline()
-            conf_list = [i.split(maxsplit=1)
-                         for i in line.split(';')[:-1]]  # chomp last \n
-            conf_dict = {k[0]: k[-1] for k in conf_list}
+            conf_dict = read_conf(line)
             center_freq, _ = config_parse_freq(conf_dict, ':FREQ:CENT')
             span_freq, unit = config_parse_freq(conf_dict, ':FREQ:SPAN')
             points = int(conf_dict[':SWE:POIN'])
