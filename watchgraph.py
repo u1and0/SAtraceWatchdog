@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""dataディレクトリ下のtxtを60secごとに監視して、グラフ化したものをpng出力する"""
+"""watchgrapht.py
+カレントディレクトリ下のtxtを定期的に監視して、
+グラフ化したものをpng出力する
+"""
 from time import sleep
 from glob import iglob
 from pathlib import Path
@@ -7,7 +10,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-SLEEPSEC = 10
 sns.set(style='whitegrid',
         palette='husl',
         font="IPAGothic",
@@ -28,16 +30,18 @@ def config_parse_freq(conf_dict: dict, key: str):
     return freq, unit
 
 
-def main():
+def main(outdir, sleepsec):
+    pngdir = Path(outdir)
+    if not (pngdir.exists() and pngdir.is_dir()):
+        raise IOError('Directory {} does not exist'.format(outdir))
     while True:
-        datadir = 'data/'
-        txts = {Path(i).stem for i in iglob(datadir + '*.txt')}
-        pngs = {Path(i).stem for i in iglob(datadir + '*.png')}
+        txts = {Path(i).stem for i in iglob('*.txt')}
+        pngs = {Path(i).stem for i in iglob(outdir+'/' if outdir[-1]!='/' else outdir+ '*.png')}
 
         # txtファイルだけあってpngがないファイルに対して実行
         for base in txts - pngs:
             # NA設定読み取り
-            with open(datadir + base + '.txt') as f:
+            with open(base + '.txt') as f:
                 line = f.readline()
             conf_list = [i.split(maxsplit=1)
                          for i in line.split(';')[:-1]]  # chomp last \n
@@ -47,7 +51,7 @@ def main():
             points = int(conf_dict[':SWE:POIN'])
 
             # グラフ化
-            df = pd.read_csv(datadir + base + '.txt',
+            df = pd.read_csv(base + '.txt',
                              sep='\s+',
                              index_col=0,
                              skiprows=1,
@@ -64,12 +68,12 @@ def main():
 
             # iloc <= 1:Minhold 2:Aver 3:Maxhold
             df.iloc[:, 2].plot(color='gray', linewidth=0.5, figsize=(12, 8))
-            plt.savefig(datadir + base + '.png')
+            plt.savefig(outdir + base + '.png')
             plt.close()  # reset plot
             print(f'{pd.datetime.now()}\
-                Succeeded export image {datadir}{base}.png')
-        sleep(SLEEPSEC)
+                Succeeded export image {outdir}{base}.png')
+        sleep(sleepsec)
 
 
 if __name__ == '__main__':
-    main()
+    main('.', 10)
