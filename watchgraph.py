@@ -5,6 +5,7 @@
 """
 import sys
 from time import sleep
+import datetime
 from glob import iglob
 from pathlib import Path
 import numpy as np
@@ -39,6 +40,38 @@ def read_conf(line: str) -> dict:
     return conf_dict
 
 
+def read_trace(filename: str) -> pd.DataFrame:
+    """filenameを読み取ってグラフ用データを返す
+    1行目にスペクトラムアナライザの設定が入っているので、
+    dictionaryで返し、
+    2行目以降をDataFrameに入れる
+    indexの調整をスペアナの設定から自動で行う
+    """
+    with open(filename) as f:
+        line = f.readline()  # NA設定読み取り
+    conf_dict = read_conf(line)
+    center_freq, _ = config_parse_freq(conf_dict, ':FREQ:CENT')
+    span_freq, unit = config_parse_freq(conf_dict, ':FREQ:SPAN')
+    points = int(conf_dict[':SWE:POIN'])
+
+    # グラフ化
+    df = pd.read_table(filename,
+                       sep='\s+',
+                       index_col=0,
+                       skiprows=1,
+                       skipfooter=1,
+                       names=[
+                           conf_dict[':TRAC1:TYPE'],
+                           conf_dict[':TRAC2:TYPE'],
+                           conf_dict[':TRAC3:TYPE'],
+                       ],
+                       engine='python')
+    df.index = np.linspace(center_freq - span_freq / 2,
+                           center_freq + span_freq / 2, points)
+    df.index.name = unit
+    return df
+
+
 def main(outdir='.', sleepsec=10):
     pngdir = Path(outdir)
     if not pngdir.exists():
@@ -55,36 +88,14 @@ def main(outdir='.', sleepsec=10):
 
         # txtファイルだけあってpngがないファイルに対して実行
         for base in txts - pngs:
-            # NA設定読み取り
-            with open(base + '.txt') as f:
-                line = f.readline()
-            conf_dict = read_conf(line)
-            center_freq, _ = config_parse_freq(conf_dict, ':FREQ:CENT')
-            span_freq, unit = config_parse_freq(conf_dict, ':FREQ:SPAN')
-            points = int(conf_dict[':SWE:POIN'])
-
-            # グラフ化
-            df = pd.read_table(base + '.txt',
-                               sep='\s+',
-                               index_col=0,
-                               skiprows=1,
-                               skipfooter=1,
-                               names=[
-                                   conf_dict[':TRAC1:TYPE'],
-                                   conf_dict[':TRAC2:TYPE'],
-                                   conf_dict[':TRAC3:TYPE']
-                               ],
-                               engine='python')
-            df.index = np.linspace(center_freq - span_freq / 2,
-                                   center_freq + span_freq / 2, points)
-            df.index.name = unit
+            df = read_trace(base + '.txt')
 
             # iloc <= 1:Minhold 2:Aver 3:Maxhold
             df.iloc[:, 2].plot(color='gray', linewidth=0.5, figsize=(12, 8))
             plt.savefig(out + base + '.png')
             plt.close()  # reset plot
-            print(f'{pd.datetime.now()}\
-                Succeeded export image {out}{base}.png')
+            print('{} Succeeded export image {}{}.png'.format(
+                datetime.datetime.now(), out, base))
         sleep(sleepsec)
 
 
