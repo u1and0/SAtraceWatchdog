@@ -108,6 +108,14 @@ def read_trace(data: str, config: namedtuple) -> pd.DataFrame:
     return df
 
 
+def title_renamer(filename: str) -> str:
+    """ファイル名から %Y/%m/%d %T 形式の日付を返す"""
+    basename = Path(filename).stem
+    n = str(basename).replace('_', '')
+    #  return like %Y%m%d %H:%M%S
+    return f'{n[:4]}/{n[4:6]}/{n[6:8]} {n[8:10]}:{n[10:12]}:{n[12:14]}'
+
+
 def main(outdir='.', sleepsec=10):
     pngdir = Path(outdir)
     if not pngdir.exists():
@@ -133,7 +141,7 @@ def main(outdir='.', sleepsec=10):
             df.iloc[:, 2].plot(color='gray',
                                linewidth=0.5,
                                figsize=(12, 8),
-                               title=base)
+                               title=title_renamer(base))
             plt.savefig(out + base + '.png')
             plt.close()  # reset plot
             print('{} Succeeded export image {}{}.png'.format(
