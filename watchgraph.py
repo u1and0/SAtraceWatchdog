@@ -7,6 +7,7 @@ import sys
 from time import sleep
 import datetime
 from glob import iglob
+from collections import namedtuple
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
@@ -24,9 +25,9 @@ sns.set(style='whitegrid',
         })
 
 
-def config_parse_freq(conf_dict: dict, key: str) -> (int, str):
+def config_parse_freq(key: str) -> (int, str):
     """stringの周波数を単位変換してfloatで返す"""
-    val = conf_dict[key].split()
+    val = key.split()
     freq = int(val[0])
     unit = val[-1]
     return freq, unit
@@ -51,45 +52,90 @@ def read_conf(line: str) -> dict:
         :FORM:BORD SWAP;
         :INIT:IMM;
     """
-    conf_list = [i.split(maxsplit=1)
-                 for i in line.split(';')[:-1]]  # chomp last \n
+    conf_list = [
+        i.split(maxsplit=1)  # split first space
+        for i in line.split(';')[2:-2]
+        # chomp below...
+        # <20161108_021106> *RST;
+        # *CLS;
+        # :INIT:IMM;
+        # last \n
+    ]
     conf_dict = {k[0]: k[-1] for k in conf_list}
-    return conf_dict
+    conf_dict_colon = {
+        # chomp first ':' & replace ':' -> '_' & replace lower case
+        # for all keys
+        k[1:].replace(':', '_').lower(): v
+        for k, v in conf_dict.items()
+    }
+    tup = namedtuple('Config', conf_dict_colon.keys())
+    conf_tuple = tup(**conf_dict_colon)
+    return conf_tuple
 
 
-def read_trace(data: str) -> pd.DataFrame:
-    """dataを読み取ってグラフ用データを返す
-    dataはファイル名またはdata stringである。
-    > 後者の場合はbase64.b64decode(byte).decode()などとして使用する。
+class Trace:
+    def __init__(self, data, firstline):
+        self.config = read_conf(firstline)
+        # data read
+        self.data = pd.read_table(data,
+                                  sep='\s+',
+                                  index_col=0,
+                                  skiprows=1,
+                                  skipfooter=1,
+                                  names=[
+                                      self.config.trac1_type,
+                                      self.config.trac2_type,
+                                      self.config.trac3_type,
+                                  ],
+                                  engine='python')
+        # data modify
+        center, _ = config_parse_freq(self.config.freq_cent)
+        span, unit = config_parse_freq(self.config.freq_span)
+        points = int(self.config.swe_poin)
+        self.data.index = np.linspace(
+            center - span / 2,
+            center + span / 2,
+            points,
+        )
+        self.data.index.name = unit
 
-    1行目にスペクトラムアナライザの設定が入っているので、
-    dictionaryで返し、
-    2行目以降をDataFrameに入れる
-    indexの調整をスペアナの設定から自動で行う
-    """
-    with open(data) as f:
-        line = f.readline()  # NA設定読み取り
-    conf_dict = read_conf(line)
-    center_freq, _ = config_parse_freq(conf_dict, ':FREQ:CENT')
-    span_freq, unit = config_parse_freq(conf_dict, ':FREQ:SPAN')
-    points = int(conf_dict[':SWE:POIN'])
+    # def plot(self) -> pd.DataFrame:
+    #     return self.data.plot()
 
-    # グラフ化
-    df = pd.read_table(data,
-                       sep='\s+',
-                       index_col=0,
-                       skiprows=1,
-                       skipfooter=1,
-                       names=[
-                           conf_dict[':TRAC1:TYPE'],
-                           conf_dict[':TRAC2:TYPE'],
-                           conf_dict[':TRAC3:TYPE'],
-                       ],
-                       engine='python')
-    df.index = np.linspace(center_freq - span_freq / 2,
-                           center_freq + span_freq / 2, points)
-    df.index.name = unit
-    return df
+
+# def read_trace(data: str) -> pd.DataFrame:
+#     """dataを読み取ってグラフ用データを返す
+#     dataはファイル名またはdata stringである。
+#     > 後者の場合はbase64.b64decode(byte).decode()などとして使用する。
+#
+#     1行目にスペクトラムアナライザの設定が入っているので、
+#     dictionaryで返し、
+#     2行目以降をDataFrameに入れる
+#     indexの調整をスペアナの設定から自動で行う
+#     """
+#     with open(data) as f:
+#         line = f.readline()  # NA設定読み取り
+#     conf_dict = read_conf(line)
+#     center_freq, _ = config_parse_freq(conf_dict, ':FREQ:CENT')
+#     span_freq, unit = config_parse_freq(conf_dict, ':FREQ:SPAN')
+#     points = int(conf_dict[':SWE:POIN'])
+#
+#     # グラフ化
+#     df = pd.read_table(data,
+#                        sep='\s+',
+#                        index_col=0,
+#                        skiprows=1,
+#                        skipfooter=1,
+#                        names=[
+#                            conf_dict[':TRAC1:TYPE'],
+#                            conf_dict[':TRAC2:TYPE'],
+#                            conf_dict[':TRAC3:TYPE'],
+#                        ],
+#                        engine='python')
+#     df.index = np.linspace(center_freq - span_freq / 2,
+#                            center_freq + span_freq / 2, points)
+#     df.index.name = unit
+#     return df
 
 
 def main(outdir='.', sleepsec=10):
@@ -108,7 +154,11 @@ def main(outdir='.', sleepsec=10):
 
         # txtファイルだけあってpngがないファイルに対して実行
         for base in txts - pngs:
-            df = read_trace(base + '.txt')
+            # df = read_trace(base + '.txt')
+            with open(data) as f:
+                line = f.readline()  # NA設定読み取り
+            trace = Trace(base + '.txt', line)
+            df = trace.data
 
             # iloc <= 1:Minhold 2:Aver 3:Maxhold
             df.iloc[:, 2].plot(color='gray', linewidth=0.5, figsize=(12, 8))
