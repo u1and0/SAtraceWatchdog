@@ -33,21 +33,41 @@ def config_parse_freq(conf_dict: dict, key: str) -> (int, str):
 
 
 def read_conf(line: str) -> dict:
-    """1行目のデータからconfigを読み取りdictで返す"""
+    """1行目のデータからconfigを読み取りdictで返す
+
+    データ例(実際は改行なし)
+    # <20161108_021106> *RST;*CLS;
+        :INP:COUP DC;
+        :BAND:RES 1 Hz;
+        :AVER:COUNT 20;
+        :SWE:POIN 2001;
+        :FREQ:CENT 22 kHz;
+        :FREQ:SPAN 8 kHz;
+        :TRAC1:TYPE MINH;
+        :TRAC2:TYPE AVER;
+        :TRAC3:TYPE MAXH;
+        :INIT:CONT 0;
+        :FORM REAL,32;
+        :FORM:BORD SWAP;
+        :INIT:IMM;
+    """
     conf_list = [i.split(maxsplit=1)
                  for i in line.split(';')[:-1]]  # chomp last \n
     conf_dict = {k[0]: k[-1] for k in conf_list}
     return conf_dict
 
 
-def read_trace(filename: str) -> pd.DataFrame:
-    """filenameを読み取ってグラフ用データを返す
+def read_trace(data: str) -> pd.DataFrame:
+    """dataを読み取ってグラフ用データを返す
+    dataはファイル名またはdata stringである。
+    > 後者の場合はbase64.b64decode(byte).decode()などとして使用する。
+
     1行目にスペクトラムアナライザの設定が入っているので、
     dictionaryで返し、
     2行目以降をDataFrameに入れる
     indexの調整をスペアナの設定から自動で行う
     """
-    with open(filename) as f:
+    with open(data) as f:
         line = f.readline()  # NA設定読み取り
     conf_dict = read_conf(line)
     center_freq, _ = config_parse_freq(conf_dict, ':FREQ:CENT')
@@ -55,7 +75,7 @@ def read_trace(filename: str) -> pd.DataFrame:
     points = int(conf_dict[':SWE:POIN'])
 
     # グラフ化
-    df = pd.read_table(filename,
+    df = pd.read_table(data,
                        sep='\s+',
                        index_col=0,
                        skiprows=1,
