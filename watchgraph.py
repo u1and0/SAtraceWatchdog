@@ -7,7 +7,6 @@ import sys
 from time import sleep
 import datetime
 from glob import iglob
-from collections import namedtuple
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
@@ -54,26 +53,13 @@ def read_conf(line: str) -> dict:
     """
     conf_list = [
         i.split(maxsplit=1)  # split first space
-        for i in line.split(';')[2:-2]
-        # chomp below...
-        # <20161108_021106> *RST;
-        # *CLS;
-        # :INIT:IMM;
-        # last \n
+        for i in line.split(';')[:-1]  # chomp last \n
     ]
     conf_dict = {k[0]: k[-1] for k in conf_list}
-    conf_dict_colon = {
-        # chomp first ':' & replace ':' -> '_' & replace lower case
-        # for all keys
-        k[1:].replace(':', '_').lower(): v
-        for k, v in conf_dict.items()
-    }
-    tup = namedtuple('Config', conf_dict_colon.keys())
-    conf_tuple = tup(**conf_dict_colon)
-    return conf_tuple
+    return conf_dict
 
 
-def read_trace(data: str, config: namedtuple) -> pd.DataFrame:
+def read_trace(data: str, config: dict) -> pd.DataFrame:
     """dataを読み取ってグラフ用データを返す
     dataはファイル名またはdata string
     > 後者の場合はbase64.b64decode(byte).decode()などとして使用する。
@@ -90,15 +76,15 @@ def read_trace(data: str, config: namedtuple) -> pd.DataFrame:
                        skiprows=1,
                        skipfooter=1,
                        names=[
-                           config.trac1_type,
-                           config.trac2_type,
-                           config.trac3_type,
+                           config[':TRAC1:TYPE'],
+                           config[':TRAC2:TYPE'],
+                           config[':TRAC3:TYPE'],
                        ],
                        engine='python')
     # DataFrame modify
-    center, _ = config_parse_freq(config.freq_cent)
-    span, unit = config_parse_freq(config.freq_span)
-    points = int(config.swe_poin)
+    center, _ = config_parse_freq(config[':FREQ:CENT'])
+    span, unit = config_parse_freq(config[':FREQ:SPAN'])
+    points = int(config[':SWE:POIN'])
     df.index = np.linspace(
         center - span / 2,
         center + span / 2,
@@ -117,6 +103,11 @@ def title_renamer(filename: str) -> str:
 
 
 def main(outdir='.', sleepsec=10):
+    """txt監視可視化ツール
+
+    sleepsec秒ごとにカレントディレクトリと出力ディレクトリの差分を見て
+    出力ディレクトリoutdirにないファイルを可視化してpngを出力する。
+    """
     pngdir = Path(outdir)
     if not pngdir.exists():
         pngdir.mkdir()
