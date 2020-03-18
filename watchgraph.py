@@ -28,7 +28,7 @@ sns.set(style='whitegrid',
 def config_parse_freq(key: str) -> (int, str):
     """stringの周波数を単位変換してfloatで返す"""
     val = key.split()
-    freq = int(val[0])
+    freq = float(val[0])
     unit = val[-1]
     return freq, unit
 
@@ -54,12 +54,7 @@ def read_conf(line: str) -> dict:
     """
     conf_list = [
         i.split(maxsplit=1)  # split first space
-        for i in line.split(';')[2:-2]
-        # chomp below...
-        # <20161108_021106> *RST;
-        # *CLS;
-        # :INIT:IMM;
-        # last \n
+        for i in line.split(';')[:-1]  # chomp last \n
     ]
     conf_dict = {k[0]: k[-1] for k in conf_list}
     conf_dict_colon = {
@@ -73,72 +68,55 @@ def read_conf(line: str) -> dict:
     return conf_tuple
 
 
-class Trace:
-    def __init__(self, data, firstline):
-        self.config = read_conf(firstline)
-        # data read
-        self.data = pd.read_table(data,
-                                  sep='\s+',
-                                  index_col=0,
-                                  skiprows=1,
-                                  skipfooter=1,
-                                  names=[
-                                      self.config.trac1_type,
-                                      self.config.trac2_type,
-                                      self.config.trac3_type,
-                                  ],
-                                  engine='python')
-        # data modify
-        center, _ = config_parse_freq(self.config.freq_cent)
-        span, unit = config_parse_freq(self.config.freq_span)
-        points = int(self.config.swe_poin)
-        self.data.index = np.linspace(
-            center - span / 2,
-            center + span / 2,
-            points,
-        )
-        self.data.index.name = unit
+def read_trace(data: str, config: dict) -> pd.DataFrame:
+    """dataを読み取ってグラフ用データを返す
+    dataはファイル名またはdata string
+    > 後者の場合はbase64.b64decode(byte).decode()などとして使用する。
 
-    # def plot(self) -> pd.DataFrame:
-    #     return self.data.plot()
+    1行目にスペクトラムアナライザの設定が入っているので、
+    dictionaryで返し、
+    2行目以降をDataFrameに入れる
+    indexの調整をスペアナの設定から自動で行う
+    """
+    # read DataFrame from filename or string
+    df = pd.read_table(data,
+                       sep='\s+',
+                       index_col=0,
+                       skiprows=1,
+                       skipfooter=1,
+                       names=[
+                           config[':TRAC1:TYPE'],
+                           config[':TRAC2:TYPE'],
+                           config[':TRAC3:TYPE'],
+                       ],
+                       engine='python')
+    # DataFrame modify
+    center, _ = config_parse_freq(config[':FREQ:CENT'])
+    span, unit = config_parse_freq(config[':FREQ:SPAN'])
+    points = int(config[':SWE:POIN'])
+    df.index = np.linspace(
+        center - span / 2,
+        center + span / 2,
+        points,
+    )
+    df.index.name = unit
+    return df
 
 
-# def read_trace(data: str) -> pd.DataFrame:
-#     """dataを読み取ってグラフ用データを返す
-#     dataはファイル名またはdata stringである。
-#     > 後者の場合はbase64.b64decode(byte).decode()などとして使用する。
-#
-#     1行目にスペクトラムアナライザの設定が入っているので、
-#     dictionaryで返し、
-#     2行目以降をDataFrameに入れる
-#     indexの調整をスペアナの設定から自動で行う
-#     """
-#     with open(data) as f:
-#         line = f.readline()  # NA設定読み取り
-#     conf_dict = read_conf(line)
-#     center_freq, _ = config_parse_freq(conf_dict, ':FREQ:CENT')
-#     span_freq, unit = config_parse_freq(conf_dict, ':FREQ:SPAN')
-#     points = int(conf_dict[':SWE:POIN'])
-#
-#     # グラフ化
-#     df = pd.read_table(data,
-#                        sep='\s+',
-#                        index_col=0,
-#                        skiprows=1,
-#                        skipfooter=1,
-#                        names=[
-#                            conf_dict[':TRAC1:TYPE'],
-#                            conf_dict[':TRAC2:TYPE'],
-#                            conf_dict[':TRAC3:TYPE'],
-#                        ],
-#                        engine='python')
-#     df.index = np.linspace(center_freq - span_freq / 2,
-#                            center_freq + span_freq / 2, points)
-#     df.index.name = unit
-#     return df
+def title_renamer(filename: str) -> str:
+    """ファイル名から %Y/%m/%d %T 形式の日付を返す"""
+    basename = Path(filename).stem
+    n = str(basename).replace('_', '')
+    #  return like %Y%m%d %H:%M%S
+    return f'{n[:4]}/{n[4:6]}/{n[6:8]} {n[8:10]}:{n[10:12]}:{n[12:14]}'
 
 
 def main(outdir='.', sleepsec=10):
+    """txt監視可視化ツール
+
+    sleepsec秒ごとにカレントディレクトリと出力ディレクトリの差分を見て
+    出力ディレクトリoutdirにないファイルを可視化してpngを出力する。
+    """
     pngdir = Path(outdir)
     if not pngdir.exists():
         pngdir.mkdir()
@@ -154,20 +132,22 @@ def main(outdir='.', sleepsec=10):
 
         # txtファイルだけあってpngがないファイルに対して実行
         for base in txts - pngs:
-            # df = read_trace(base + '.txt')
-            with open(data) as f:
+            with open(base + '.txt') as f:
                 line = f.readline()  # NA設定読み取り
-            trace = Trace(base + '.txt', line)
-            df = trace.data
+            config = read_conf(line)
+            df = read_trace(base + '.txt', config)
 
             # iloc <= 1:Minhold 2:Aver 3:Maxhold
-            df.iloc[:, 2].plot(color='gray', linewidth=0.5, figsize=(12, 8))
+            df.iloc[:, 2].plot(color='gray',
+                               linewidth=0.5,
+                               figsize=(12, 8),
+                               title=title_renamer(base))
             plt.savefig(out + base + '.png')
             plt.close()  # reset plot
             print('{} Succeeded export image {}{}.png'.format(
                 datetime.datetime.now(), out, base))
-        sleep(sleepsec)
+        sleep(float(sleepsec))
 
 
 if __name__ == '__main__':
-    main(*sys.argv[1:])
+    main(*sys.argv[1:3])
