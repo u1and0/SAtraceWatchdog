@@ -2,6 +2,7 @@
 """SAtraceを扱いやすくするクラス Trace()"""
 import pandas as pd
 from scipy import stats
+import seaborn as sns
 
 
 class Trace(pd.DataFrame):
@@ -20,3 +21,6 @@ class Trace(pd.DataFrame):
             df: ノイズフロア(データフレーム型)
         """
         return self.apply(lambda x: stats.scoreatpercentile(x, percent), axis)
+
+    def heatmap(self):
+        return sns.heatmap(self.T)

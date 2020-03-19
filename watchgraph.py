@@ -7,12 +7,12 @@ import sys
 from time import sleep
 import datetime
 from glob import iglob
-from collections import namedtuple
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+from .tracer import Trace
 sns.set(style='whitegrid',
         palette='husl',
         font="IPAGothic",
@@ -57,18 +57,10 @@ def read_conf(line: str) -> dict:
         for i in line.split(';')[:-1]  # chomp last \n
     ]
     conf_dict = {k[0]: k[-1] for k in conf_list}
-    conf_dict_colon = {
-        # chomp first ':' & replace ':' -> '_' & replace lower case
-        # for all keys
-        k[1:].replace(':', '_').lower(): v
-        for k, v in conf_dict.items()
-    }
-    tup = namedtuple('Config', conf_dict_colon.keys())
-    conf_tuple = tup(**conf_dict_colon)
-    return conf_tuple
+    return conf_dict
 
 
-def read_trace(data: str, config: dict) -> pd.DataFrame:
+def read_trace(data: str, config: dict = None) -> pd.DataFrame:
     """dataを読み取ってグラフ用データを返す
     dataはファイル名またはdata string
     > 後者の場合はbase64.b64decode(byte).decode()などとして使用する。
@@ -78,6 +70,10 @@ def read_trace(data: str, config: dict) -> pd.DataFrame:
     2行目以降をDataFrameに入れる
     indexの調整をスペアナの設定から自動で行う
     """
+    if config is None:  # configを指定しなければ
+        # 自動でdataの1行目をconfigとして読み込む
+        with open(data, 'r') as f:
+            config = read_conf(f.readline())
     # read DataFrame from filename or string
     df = pd.read_table(data,
                        sep='\s+',
@@ -100,7 +96,14 @@ def read_trace(data: str, config: dict) -> pd.DataFrame:
         points,
     )
     df.index.name = unit
-    return df
+    return Trace(df)
+
+
+def read_traces(*files, name):
+    df = pd.DataFrame(
+        {title_renamer(f): read_trace(f).loc[:, name]
+         for f in files})
+    return Trace(df)
 
 
 def title_renamer(filename: str) -> str:
