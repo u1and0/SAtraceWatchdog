@@ -99,10 +99,12 @@ def read_trace(data: str, config: dict = None) -> pd.DataFrame:
     return Trace(df)
 
 
-def read_traces(*files, name):
-    df = pd.DataFrame(
-        {title_renamer(f): read_trace(f).loc[:, name]
-         for f in files})
+def read_traces(*files, columns):
+    df = pd.DataFrame({
+        datetime.datetime.strptime(Path(f).stem, '%Y%m%d_%H%M%S'):  # basename
+        read_trace(f).loc[:, columns]  # read data & cut only one column
+        for f in files
+    })
     return Trace(df)
 
 
