@@ -22,5 +22,5 @@ class Trace(pd.DataFrame):
         """
         return self.apply(lambda x: stats.scoreatpercentile(x, percent), axis)
 
-    def heatmap(self):
-        return sns.heatmap(self.T)
+    def heatmap(self, *args, **kwargs):
+        return sns.heatmap(self.T, *args, **kwargs)
