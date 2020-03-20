@@ -12,6 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+from .tracer import Trace
 sns.set(style='whitegrid',
         palette='husl',
         font="IPAGothic",
@@ -59,7 +60,7 @@ def read_conf(line: str) -> dict:
     return conf_dict
 
 
-def read_trace(data: str, config: dict) -> pd.DataFrame:
+def read_trace(data: str, config: dict = None) -> pd.DataFrame:
     """dataを読み取ってグラフ用データを返す
     dataはファイル名またはdata string
     > 後者の場合はbase64.b64decode(byte).decode()などとして使用する。
@@ -69,6 +70,10 @@ def read_trace(data: str, config: dict) -> pd.DataFrame:
     2行目以降をDataFrameに入れる
     indexの調整をスペアナの設定から自動で行う
     """
+    if config is None:  # configを指定しなければ
+        # 自動でdataの1行目をconfigとして読み込む
+        with open(data, 'r') as f:
+            config = read_conf(f.readline())
     # read DataFrame from filename or string
     df = pd.read_table(data,
                        sep='\s+',
@@ -91,7 +96,16 @@ def read_trace(data: str, config: dict) -> pd.DataFrame:
         points,
     )
     df.index.name = unit
-    return df
+    return Trace(df)
+
+
+def read_traces(*files, columns):
+    df = pd.DataFrame({
+        datetime.datetime.strptime(Path(f).stem, '%Y%m%d_%H%M%S'):  # basename
+        read_trace(f).loc[:, columns]  # read data & cut only one column
+        for f in files
+    })
+    return Trace(df)
 
 
 def title_renamer(filename: str) -> str:
