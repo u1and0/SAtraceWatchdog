@@ -75,17 +75,17 @@ def read_trace(data: str, config: dict = None) -> pd.DataFrame:
         with open(data, 'r') as f:
             config = read_conf(f.readline())
     # read DataFrame from filename or string
-    df = pd.read_table(data,
-                       sep='\s+',
-                       index_col=0,
-                       skiprows=1,
-                       skipfooter=1,
-                       names=[
-                           config[':TRAC1:TYPE'],
-                           config[':TRAC2:TYPE'],
-                           config[':TRAC3:TYPE'],
-                       ],
-                       engine='python')
+    df = pd.read_csv(data,
+                     sep='\s+',
+                     index_col=0,
+                     skiprows=1,
+                     skipfooter=1,
+                     names=[
+                         config[':TRAC1:TYPE'],
+                         config[':TRAC2:TYPE'],
+                         config[':TRAC3:TYPE'],
+                     ],
+                     engine='python')
     # DataFrame modify
     center, _ = config_parse_freq(config[':FREQ:CENT'])
     span, unit = config_parse_freq(config[':FREQ:SPAN'])
