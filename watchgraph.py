@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-from .tracer import Trace
+from tracer import Trace
 sns.set(style='whitegrid',
         palette='husl',
         font="IPAGothic",
@@ -137,10 +137,7 @@ def main(outdir='.', sleepsec=10):
 
         # txtファイルだけあってpngがないファイルに対して実行
         for base in txts - pngs:
-            with open(base + '.txt') as f:
-                line = f.readline()  # NA設定読み取り
-            config = read_conf(line)
-            df = read_trace(base + '.txt', config)
+            df = read_trace(base + '.txt')
 
             # iloc <= 1:Minhold 2:Aver 3:Maxhold
             df.iloc[:, 2].plot(color='gray',
