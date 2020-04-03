@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+"""
+plotしたグラフを表示
+--save でpng形式で保存
+USAGE:
+    ./aplot.py --save 200420_151550.txt 200420_152040.txt ...
+
+## 1ファイルの呼び出し
+コンソール上では
+`python oneplot.py -d data data/20161108_020604.txt`
+
+python上では以下のように1ファイルだけ指定
+第二引数はディレクトリ。
+
+
+```python
+plot_onefile('data/20161108_020104.txt')`
+```
+
+## 複数ファイルの呼び出し
+コンソール上では
+
+```sh
+$ python oneplot.py -d data data/*.txt`
+```
+
+python上ではforを使わないといけない。
+oneplot.pyの`main()`ではforが使われているからコンソール上では
+上記のようにアスタリスク指定が出来る。
+
+```python
+import glob
+for i in glob.glob('../data/*.txt')
+    plot_onefile(i)
+```
+
+"""
+from pathlib import Path
+import argparse
+import matplotlib.pyplot as plt
+import seaborn as sns
+from watchgraph import read_trace
+from watchgraph import title_renamer
+
+# グラフ描画オプション
+sns.set(style='whitegrid',
+        palette='husl',
+        font="IPAGothic",
+        font_scale=1.5,
+        color_codes=False,
+        rc={
+            'grid.linestyle': ':',
+            'grid.color': 'gray',
+            'image.cmap': 'viridis'
+        })
+
+
+def plot_onefile(filename, directory=None):
+    """スペクトラムファイル1ファイルをプロットします。
+    directoryが指定されてたら、その場所に同じベースネームでpng形式に保存します。
+    """
+    df = read_trace(filename)
+    ax = df.iloc[:, 2].plot(color='gray',
+                            linewidth=0.5,
+                            figsize=(12, 8),
+                            title=title_renamer(filename))
+    if directory:
+        base = Path(filename).stem
+        plt.savefig(directory + '/' + base + '.png')
+        # ファイルに保存する時plt.close()しないと
+        # 複数プロットが1pngファイルに表示される
+        plt.close()  # reset plot
+    return ax
+
+
+def main():
+    """entry point
+    引数の解釈をして、
+    plot_onefile()に指定されたファイル名をforで渡します。
+    """
+    parser = argparse.ArgumentParser(
+        description='スペクトラム情報が記されたテキストファイルをプロットします')
+    parser.add_argument(
+        'files',
+        help='変換ファイル名。複数指定可能',
+        nargs='*',
+    )
+    parser.add_argument(
+        '-d',
+        '--directory',
+        help='保存ディレクトリの指定',
+        nargs=1,
+    )
+    args = parser.parse_args()
+
+    # args.directoryがリストで渡されるのをstrに変換
+    flatten = None if args.directory is None else args.directory[0]
+    # 引数で渡されたtxtファイルをプロット
+    for filename in args.files:
+        plot_onefile(filename, directory=flatten)
+
+
+if __name__ == '__main__':
+    main()
