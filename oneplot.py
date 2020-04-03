@@ -4,6 +4,36 @@ plotしたグラフを表示
 --save でpng形式で保存
 USAGE:
     ./aplot.py --save 200420_151550.txt 200420_152040.txt ...
+
+## 1ファイルの呼び出し
+コンソール上では
+`python oneplot.py -d data data/20161108_020604.txt`
+
+python上では以下のように1ファイルだけ指定
+第二引数はディレクトリ。
+
+
+```python
+plot_onefile('data/20161108_020104.txt')`
+```
+
+## 複数ファイルの呼び出し
+コンソール上では
+
+```sh
+$ python oneplot.py -d data data/*.txt`
+```
+
+python上ではforを使わないといけない。
+oneplot.pyの`main()`ではforが使われているからコンソール上では
+上記のようにアスタリスク指定が出来る。
+
+```python
+import glob
+for i in glob.glob('../data/*.txt')
+    plot_onefile(i)
+```
+
 """
 from pathlib import Path
 import argparse
@@ -26,21 +56,28 @@ sns.set(style='whitegrid',
 
 
 def plot_onefile(filename, directory=None):
-    """plot"""
+    """スペクトラムファイル1ファイルをプロットします。
+    directoryが指定されてたら、その場所に同じベースネームでpng形式に保存します。
+    """
     df = read_trace(filename)
-    df.iloc[:, 2].plot(color='gray',
-                       linewidth=0.5,
-                       figsize=(12, 8),
-                       title=title_renamer(filename))
-    base = Path(filename).stem
+    ax = df.iloc[:, 2].plot(color='gray',
+                            linewidth=0.5,
+                            figsize=(12, 8),
+                            title=title_renamer(filename))
     if directory:
+        base = Path(filename).stem
         plt.savefig(directory + '/' + base + '.png')
+        # ファイルに保存する時plt.close()しないと
+        # 複数プロットが1pngファイルに表示される
         plt.close()  # reset plot
-    return df
+    return ax
 
 
 def main():
-    """main"""
+    """entry point
+    引数の解釈をして、
+    plot_onefile()に指定されたファイル名をforで渡します。
+    """
     parser = argparse.ArgumentParser(
         description='スペクトラム情報が記されたテキストファイルをプロットします')
     parser.add_argument(
@@ -55,11 +92,12 @@ def main():
         nargs=1,
     )
     args = parser.parse_args()
-    print(args)
 
+    # args.directoryがリストで渡されるのをstrに変換
+    flatten = None if args.directory is None else args.directory[0]
+    # 引数で渡されたtxtファイルをプロット
     for filename in args.files:
-        dirs = args.directory[0] if args.directory is not None else None
-        plot_onefile(filename, dirs)
+        plot_onefile(filename, directory=flatten)
 
 
 if __name__ == '__main__':
