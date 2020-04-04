@@ -90,15 +90,12 @@ def main():
         '-d',
         '--directory',
         help='保存ディレクトリの指定',
-        nargs=1,
     )
     args = parser.parse_args()
 
-    # args.directoryがリストで渡されるのをstrに変換
-    flatten = None if args.directory is None else args.directory[0]
     # 引数で渡されたtxtファイルをプロット
     for filename in args.files:
-        plot_onefile(filename, directory=flatten)
+        plot_onefile(filename, directory=args.directory)
 
 
 if __name__ == '__main__':

@@ -14,16 +14,6 @@ import pandas as pd
 import seaborn as sns
 from tracer import Trace
 from oneplot import plot_onefile
-sns.set(style='whitegrid',
-        palette='husl',
-        font="IPAGothic",
-        font_scale=1.5,
-        color_codes=False,
-        rc={
-            'grid.linestyle': ':',
-            'grid.color': 'gray',
-            'image.cmap': 'viridis'
-        })
 
 
 def config_parse_freq(key: str) -> (int, str):
