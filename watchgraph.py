@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from tracer import Trace
+from oneplot import plot_onefile
 sns.set(style='whitegrid',
         palette='husl',
         font="IPAGothic",
@@ -137,15 +138,7 @@ def main(outdir='.', sleepsec=10):
 
         # txtファイルだけあってpngがないファイルに対して実行
         for base in txts - pngs:
-            df = read_trace(base + '.txt')
-
-            # iloc <= 1:Minhold 2:Aver 3:Maxhold
-            df.iloc[:, 2].plot(color='gray',
-                               linewidth=0.5,
-                               figsize=(12, 8),
-                               title=title_renamer(base))
-            plt.savefig(out + base + '.png')
-            plt.close()  # reset plot
+            plot_onefile(base + '.txt', directory=outdir)
             print('{} Succeeded export image {}{}.png'.format(
                 datetime.datetime.now(), out, base))
         sleep(float(sleepsec))

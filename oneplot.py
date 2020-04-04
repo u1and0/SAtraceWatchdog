@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
 plotしたグラフを表示
---save でpng形式で保存
+--dir(-d)で指定したディレクトリにpng形式で保存
+
 USAGE:
-    ./aplot.py --save 200420_151550.txt 200420_152040.txt ...
+    ./oneplot.py --dir ../pngdir 200420_151550.txt 200420_152040.txt ...
 
 ## 1ファイルの呼び出し
 コンソール上では
