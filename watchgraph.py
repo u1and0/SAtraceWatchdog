@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""watchgrapht.py v0.0.0
-カレントディレクトリ下のtxtを定期的に監視して、
-グラフ化したものをpng出力する
+""" txt監視可視化ツール
+txtファイルとpngファイルの差分をチェックして、グラフ化されていないファイルだけpng化します。
 """
-import sys
+import os
+import argparse
 from time import sleep
 import datetime
 from glob import iglob
@@ -117,32 +117,61 @@ def title_renamer(filename: str) -> str:
     return f'{n[:4]}/{n[4:6]}/{n[6:8]} {n[8:10]}:{n[10:12]}:{n[12:14]}'
 
 
-def main(outdir='.', sleepsec=10):
-    """txt監視可視化ツール
-
-    sleepsec秒ごとにカレントディレクトリと出力ディレクトリの差分を見て
-    出力ディレクトリoutdirにないファイルを可視化してpngを出力する。
+def arg_parse():
+    """引数解析
+    ディレクトリとチェック間隔(秒)を指定する
     """
-    pngdir = Path(outdir)
-    if not pngdir.exists():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('-d',
+                        '--directory',
+                        help='出力ディレクトリ',
+                        default=os.getcwd())
+    parser.add_argument('-s',
+                        '--sleepsec',
+                        help='チェック間隔(sec)',
+                        type=int,
+                        default=10)
+    args = parser.parse_args()
+    return args
+
+
+def directory_check(directory):
+    """指定されたディレクトリをチェックする
+    存在しなければ作成する
+    存在はするがディレクトリではないとき、エラーを返す。
+    """
+    pngdir = Path(directory)
+    if not pngdir.exists():  # 存在しないディレクトリ指定でディレクトリ作成
         pngdir.mkdir()
         print(f'{pd.datetime.now()}\
               make directory {pngdir.resolve()}')
-    if not pngdir.is_dir():
+    if not pngdir.is_dir():  # 存在はするけれどもディレクトリ以外を指定されたらエラー
         raise IOError(f'{pngdir.resolve()} is not directory')
-    while True:
+
+
+def loop(args):
+    """ファイル差分チェックを実行し、pngファイルを保存する
+    Ctrl+Cで止めない限り続く
+    """
+    while True:  #
         txts = {Path(i).stem for i in iglob('*.txt')}
-        # append directory last '/'
-        out = str(pngdir.resolve()) + '/'
-        pngs = {Path(i).stem for i in iglob(str(out) + '*.png')}
+        out = args.directory + '/'  # append directory last '/'
+        pngs = {Path(i).stem for i in iglob(out + '*.png')}
 
         # txtファイルだけあってpngがないファイルに対して実行
         for base in txts - pngs:
-            plot_onefile(base + '.txt', directory=outdir)
+            plot_onefile(base + '.txt', directory=args.directory)
             print('{} Succeeded export image {}{}.png'.format(
                 datetime.datetime.now(), out, base))
-        sleep(float(sleepsec))
+        sleep(args.sleepsec)
+
+
+def main():
+    """entry point"""
+    args = arg_parse()
+    directory_check(args.directory)
+    loop(args)
 
 
 if __name__ == '__main__':
-    main(*sys.argv[1:3])
+    main()
