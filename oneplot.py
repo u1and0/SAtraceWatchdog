@@ -40,8 +40,7 @@ from pathlib import Path
 import argparse
 import matplotlib.pyplot as plt
 import seaborn as sns
-from SAtraceWatchdog.tracer import read_trace
-from SAtraceWatchdog.tracer import title_renamer
+from SAtraceWatchdog.tracer import read_trace, title_renamer, Trace
 
 # グラフ描画オプション
 sns.set(style='whitegrid',
@@ -56,15 +55,19 @@ sns.set(style='whitegrid',
         })
 
 
-def plot_onefile(filename, directory=None):
+def plot_onefile(filename, directory=None, column='AVER'):
     """スペクトラムファイル1ファイルをプロットします。
     directoryが指定されてたら、その場所に同じベースネームでpng形式に保存します。
     """
     df = read_trace(filename)
-    ax = df.iloc[:, 2].plot(color='gray',
-                            linewidth=0.5,
-                            figsize=(12, 8),
-                            title=title_renamer(filename))
+    select = Trace(df.loc[:, column])
+    ax = select.plot(color='gray',
+                     linewidth=0.5,
+                     figsize=(12, 8),
+                     title=title_renamer(filename),
+                     legend=False)
+    select.plot_markers(ax=ax, legend=False)
+    select.plot_noisefloor(ax=ax, legend=False)
     if directory:
         base = Path(filename).stem
         plt.savefig(directory + '/' + base + '.png')
@@ -91,11 +94,17 @@ def main():
         '--directory',
         help='保存ディレクトリの指定',
     )
+    parser.add_argument(
+        '-c',
+        '--column',
+        help='グラフ化する列指定',
+        default='AVER'  # 'MAXH', 'MINH'
+    )
     args = parser.parse_args()
 
     # 引数で渡されたtxtファイルをプロット
     for filename in args.files:
-        plot_onefile(filename, directory=args.directory)
+        plot_onefile(filename, directory=args.directory, column=args.column)
 
 
 if __name__ == '__main__':
