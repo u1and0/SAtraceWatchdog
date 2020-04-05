@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """SAtraceを扱いやすくするクラス Trace()"""
 import datetime
+import json
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -83,6 +84,7 @@ def read_trace(data: str, config: dict = None) -> pd.DataFrame:
 
 
 def read_traces(*files, columns):
+    """複数ファイルにread_trace()して1つのTraceにまとめる"""
     df = pd.DataFrame({
         datetime.datetime.strptime(Path(f).stem, '%Y%m%d_%H%M%S'):  # basename
         read_trace(f).loc[:, columns]  # read data & cut only one column
@@ -100,12 +102,21 @@ def title_renamer(filename: str) -> str:
 
 
 class Trace(pd.DataFrame):
+    """pd.DataFrameのように扱えるTraceクラス"""
+    # marker設定
+    # "marker":[19.2, 19.8,22.2,24.2,23.4]
+    # のような形式でconfig/marker.jsonファイルに記述する
+    _dirname = Path(__file__).parent
+    with open(_dirname / 'config/marker.json') as f:
+        _config = json.load(f)
+    marker = _config['marker']
+    marker.sort()
+
     def __init__(self, dataframe):
         super().__init__(dataframe)
 
     def noisefloor(self, axis: int = 0, percent: float = 25):
-        """
-        1/4 medianをノイズフロアとし、各列に適用して返す
+        """ 1/4 medianをノイズフロアとし、各列に適用して返す
         引数:
             df: 行が周波数、列が日時(データフレーム型)
             axis: 0 or 1.
@@ -117,4 +128,11 @@ class Trace(pd.DataFrame):
         return self.apply(lambda x: stats.scoreatpercentile(x, percent), axis)
 
     def heatmap(self, *args, **kwargs):
+        """sns.heatmap"""
         return sns.heatmap(self.T, *args, **kwargs)
+
+    def plot_markers(self, *args, **kwargs):
+        """marker plot as Diamond"""
+        slices = self.loc[self.marker]
+        ax = slices.plot(style='D', fillstyle='none', *args, **kwargs)
+        return ax
