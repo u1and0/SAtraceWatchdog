@@ -40,8 +40,8 @@ from pathlib import Path
 import argparse
 import matplotlib.pyplot as plt
 import seaborn as sns
-from watchgraph import read_trace
-from watchgraph import title_renamer
+from SAtraceWatchdog.tracer import read_trace
+from SAtraceWatchdog.tracer import title_renamer
 
 # グラフ描画オプション
 sns.set(style='whitegrid',
