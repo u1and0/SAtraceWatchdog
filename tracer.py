@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 import seaborn as sns
+import matplotlib.pyplot as plt
 
 
 def config_parse_freq(key: str) -> (int, str):
@@ -135,4 +136,11 @@ class Trace(pd.DataFrame):
         """marker plot as Diamond"""
         slices = self.loc[self.marker]
         ax = slices.plot(style='D', fillstyle='none', *args, **kwargs)
+        return ax
+
+    def plot_noisefloor(self, *args, **kwargs):
+        """noisefloor plot as black line"""
+        line = self.noisefloor()
+        min, max = self.index.min(), self.index.max()
+        ax = plt.plot([min, max], [line, line], 'k-')
         return ax
