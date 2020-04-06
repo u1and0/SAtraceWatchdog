@@ -135,12 +135,12 @@ class Trace(pd.DataFrame):
     def plot_markers(self, *args, **kwargs):
         """marker plot as Diamond"""
         slices = self.loc[self.marker]
-        ax = slices.plot(style='D', fillstyle='none', *args, **kwargs)
+        ax = slices.plot(style='rD', fillstyle='none', *args, **kwargs)
         return ax
 
     def plot_noisefloor(self, *args, **kwargs):
         """noisefloor plot as black line"""
         line = self.noisefloor()
-        min, max = self.index.min(), self.index.max()
-        ax = plt.plot([min, max], [line, line], 'k-')
+        _min, _max = self.index.min(), self.index.max()
+        ax = plt.plot([_min, _max], [line, line], 'k--')
         return ax
