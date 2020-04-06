@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""すべてのtxtファイルをheatmap用中間ファイルにまとめる"""
+"""すべてのtxtファイルをheatmap用中間ファイルにまとめる
+
+globですべてのtxtをread_traces()に渡しTrace化する。
+時系列順に直すためtranspose()し、インデックスを時系列順に並べ替える。
+"""
 import glob
 from SAtraceWatchdog.tracer import read_traces
 
