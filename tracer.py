@@ -4,10 +4,10 @@ import datetime
 import json
 from pathlib import Path
 import numpy as np
-import pandas as pd
 from scipy import stats
 import seaborn as sns
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 def config_parse_freq(key: str) -> (int, str):
@@ -132,6 +132,38 @@ class Trace(pd.DataFrame):
         """sns.heatmap"""
         return sns.heatmap(self.T, *args, **kwargs)
 
+    def mw2db(self):
+        """mW -> dB
+        Usage: `df.mw2db()` or `mw2db(df)`
+
+        ```python:TEST
+        mw = pd.Series(np.arange(11))
+        df = pd.DataFrame({'watt': mw, 'dBm': mw.mw2db(),
+                          'dB to watt': mw.mw2db().db2mw()})
+        ```
+        print(df)
+        # [Out]#     dB to watt        dBm  watt
+        # [Out]# 0          0.0       -inf     0
+        # [Out]# 1          1.0   0.000000     1
+        # [Out]# 2          2.0   3.010300     2
+        # [Out]# 3          3.0   4.771213     3
+        # [Out]# 4          4.0   6.020600     4
+        # [Out]# 5          5.0   6.989700     5
+        # [Out]# 6          6.0   7.781513     6
+        # [Out]# 7          7.0   8.450980     7
+        # [Out]# 8          8.0   9.030900     8
+        # [Out]# 9          9.0   9.542425     9
+        # [Out]# 10        10.0  10.000000    10
+        ```
+        """
+        return Trace(10 * np.log10(self))
+
+    def db2mw(self):
+        """dB -> mW
+        Usage: `df.db2mw()` or `db2mw(df)`
+        """
+        return Trace(np.power(10, self / 10))
+
     def plot_markers(self, *args, **kwargs):
         """marker plot as Diamond"""
         slices = self.loc[self.marker]
@@ -142,5 +174,5 @@ class Trace(pd.DataFrame):
         """noisefloor plot as black line"""
         line = self.noisefloor()
         _min, _max = self.index.min(), self.index.max()
-        ax = plt.plot([_min, _max], [line, line], 'k--')
+        ax = plt.plot([_min, _max], [line, line], 'k--', *args, **kwargs)
         return ax
