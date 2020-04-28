@@ -174,5 +174,5 @@ class Trace(pd.DataFrame):
         """noisefloor plot as black line"""
         line = self.noisefloor()
         _min, _max = self.index.min(), self.index.max()
-        ax = plt.plot([_min, _max], [line, line], 'k--', *args, **kwargs)
+        ax = plt.plot([_min, _max], [line, line], 'k--')
         return ax

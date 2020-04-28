@@ -67,7 +67,7 @@ def plot_onefile(filename, directory=None, column='AVER'):
                      title=title_renamer(filename),
                      legend=False)
     select.plot_markers(ax=ax, legend=False)
-    select.plot_noisefloor(ax=ax, legend=False)
+    select.plot_noisefloor(legend=False)
     if directory:
         base = Path(filename).stem
         plt.savefig(directory + '/' + base + '.png')
