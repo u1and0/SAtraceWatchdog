@@ -130,7 +130,7 @@ class Trace(pd.DataFrame):
 
     def heatmap(self, *args, **kwargs):
         """sns.heatmap"""
-        return sns.heatmap(self.T, *args, **kwargs)
+        return sns.heatmap(self.T, cbar=False, *args, **kwargs)
 
     def plot_markers(self, *args, **kwargs):
         """marker plot as Diamond"""
@@ -142,5 +142,5 @@ class Trace(pd.DataFrame):
         """noisefloor plot as black line"""
         line = self.noisefloor()
         _min, _max = self.index.min(), self.index.max()
-        ax = plt.plot([_min, _max], [line, line], 'k--')
+        ax = plt.plot([_min, _max], [line, line], 'k--', *args, **kwargs)
         return ax
