@@ -1,6 +1,16 @@
 #!/usr/bin/env python3
 """ txt監視可視化ツール
 txtファイルとpngファイルの差分をチェックして、グラフ化されていないファイルだけpng化します。
+
+Usage:
+    $ watchgraph.py --directory ../png --glob '2020/*' --sleepsec 300
+
+上のスクリプトは
+
+* ../pngディレクトリにpngファイルを出力します。
+* 2020が接頭に着くファイルのみを処理します。
+* 300秒ごとにtxtファイルとpngファイルの差分をチェックします。
+* スター(*)はshell上で展開されてしまうのを防ぐためにバックスラッシュエスケープが必要。
 """
 import sys
 import os
@@ -56,6 +66,10 @@ def arg_parse():
                         '--directory',
                         help='出力ディレクトリ',
                         default=os.getcwd())
+    parser.add_argument('-g',
+                        '--glob',
+                        help='入力ファイル名にglobパターンを使う',
+                        default='*')
     parser.add_argument('-s',
                         '--sleepsec',
                         help='チェック間隔(sec)',
@@ -87,9 +101,9 @@ def loop(args):
     """
     log = logging.getLogger(__name__)
     while True:
-        txts = {Path(i).stem for i in iglob('*.txt')}
+        txts = {Path(i).stem for i in iglob(args.glob + '.txt')}
         out = args.directory + '/'  # append directory last '/'
-        pngs = {Path(i).stem for i in iglob(out + '*.png')}
+        pngs = {Path(i).stem for i in iglob(out + args.glob + '.png')}
 
         # txtファイルだけあってpngがないファイルに対して実行
         for base in txts - pngs:
@@ -102,6 +116,7 @@ def main():
     """Entry point"""
     set_logger()
     args = arg_parse()
+    print(args)
     directory_check(args.directory)
     loop(args)
 

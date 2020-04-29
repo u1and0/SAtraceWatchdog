@@ -60,14 +60,14 @@ def plot_onefile(filename, directory=None, column='AVER'):
     directoryが指定されてたら、その場所に同じベースネームでpng形式に保存します。
     """
     df = read_trace(filename)
-    select = Trace(df.loc[:, column])
+    select = Trace(df[column])
     ax = select.plot(color='gray',
                      linewidth=0.5,
                      figsize=(12, 8),
                      title=title_renamer(filename),
                      legend=False)
     select.plot_markers(ax=ax, legend=False)
-    select.plot_noisefloor(ax=ax, legend=False)
+    select.plot_noisefloor()
     if directory:
         base = Path(filename).stem
         plt.savefig(directory + '/' + base + '.png')

@@ -134,7 +134,8 @@ class Trace(pd.DataFrame):
 
     def plot_markers(self, *args, **kwargs):
         """marker plot as Diamond"""
-        slices = self.loc[self.marker]
+        slices = self.reindex(self.marker).loc[self.marker]
+        # reindex() put off Keyerror
         ax = slices.plot(style='rD', fillstyle='none', *args, **kwargs)
         return ax
 
@@ -142,5 +143,5 @@ class Trace(pd.DataFrame):
         """noisefloor plot as black line"""
         line = self.noisefloor()
         _min, _max = self.index.min(), self.index.max()
-        ax = plt.plot([_min, _max], [line, line], 'k--')
+        ax = plt.plot([_min, _max], [line, line], 'k--', *args, **kwargs)
         return ax
