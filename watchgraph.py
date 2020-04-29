@@ -19,8 +19,12 @@ from time import sleep
 import datetime
 from glob import iglob
 from pathlib import Path
+import matplotlib.pyplot as plt
+import pandas as pd
 import logging
+from SAtraceWatchdog import tracer
 from SAtraceWatchdog.oneplot import plot_onefile
+from SAtraceWatchdog.dayplot import allplt_wtf
 
 
 def set_logger():
@@ -111,6 +115,19 @@ def loop(args):
         for base in txts - pngs:
             plot_onefile(base + '.txt', directory=args.directory)
             log.info('Succeeded export image {}{}.png'.format(out, base))
+
+        # dayplot()
+        start, end = pd.Timestamp('20200401'), pd.Timestamp('20200831')
+        for day in pd.date_range(start, end).strftime('%Y%m%d'):
+            files = iglob(f'{day}_*.txt')
+            trss = tracer.read_traces(*files, columns='AVER')
+            allplt_wtf(tracer.Trace(trss.T), title=day, cmap='viridis')
+            if args.directory:
+                plt.savefig(args.directory + '/waterfall_' + day + '.png')
+                # ファイルに保存する時plt.close()しないと
+                # 複数プロットが1pngファイルに表示される
+                plt.close()  # reset plot
+
         sleep(args.sleepsec)
 
 
