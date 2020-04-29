@@ -130,7 +130,7 @@ class Trace(pd.DataFrame):
 
     def heatmap(self, *args, **kwargs):
         """sns.heatmap"""
-        return sns.heatmap(self.T, *args, **kwargs)
+        return sns.heatmap(self.T, cbar=False, *args, **kwargs)
 
     def plot_markers(self, *args, **kwargs):
         """marker plot as Diamond"""
