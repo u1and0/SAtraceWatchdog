@@ -16,6 +16,7 @@ import sys
 import os
 import argparse
 from time import sleep
+import datetime
 from glob import iglob
 from pathlib import Path
 import logging
@@ -44,9 +45,10 @@ def set_logger():
     root_logger.addHandler(console_handler)
 
     # ファイル用ハンドラの作成
-    basename = Path(__file__).stem
+    basename = Path(__file__).parent
+    timestamp = datetime.datetime.now().strftime('%y%m%d_%H%M%S')
     file_handler = logging.handlers.RotatingFileHandler(
-        filename=f'{basename}.log',
+        filename=f'{basename}/log/watchdog_{timestamp}.log',
         maxBytes=1e6,
         encoding='utf-8',
         backupCount=3)
