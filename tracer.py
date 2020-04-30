@@ -104,6 +104,7 @@ def title_renamer(filename: str) -> str:
 
 class Trace(pd.DataFrame):
     """pd.DataFrameのように扱えるTraceクラス"""
+
     def __init__(self, dataframe):
         super().__init__(dataframe)
         # marker設定
@@ -165,7 +166,7 @@ class Trace(pd.DataFrame):
 
     def plot_markers(self, *args, **kwargs):
         """marker plot as Diamond"""
-        slices = self.reindex(self.marker).loc[self.marker]
+        slices = self.squeeze().reindex(self.marker).loc[self.marker]
         # reindex() put off Keyerror
         ax = slices.plot(style='rD', fillstyle='none', *args, **kwargs)
         return ax
