@@ -45,7 +45,13 @@ def read_conf(line: str) -> dict:
     return conf_dict
 
 
-def read_trace(data: str, config: dict = None) -> pd.DataFrame:
+def read_trace(
+        data: str,
+        config: dict = None,
+        usecols=None,  # overwrited arg
+        *args,
+        **kwargs,
+) -> pd.DataFrame:
     """dataを読み取ってグラフ用データを返す
     dataはファイル名またはdata string
     > 後者の場合はbase64.b64decode(byte).decode()などとして使用する。
@@ -54,6 +60,9 @@ def read_trace(data: str, config: dict = None) -> pd.DataFrame:
     dictionaryで返し、
     2行目以降をDataFrameに入れる
     indexの調整をスペアナの設定から自動で行う
+
+    usecolsオプションはconfigの:TRACE:TYPEパース後の名称を指定する。
+    (ex: AVER, MAXH, MINH)
     """
     if config is None:  # configを指定しなければ
         # 自動でdataの1行目をconfigとして読み込む
@@ -70,7 +79,9 @@ def read_trace(data: str, config: dict = None) -> pd.DataFrame:
                          config[':TRAC2:TYPE'],
                          config[':TRAC3:TYPE'],
                      ],
-                     engine='python')
+                     engine='python',
+                     *args,
+                     **kwargs)
     # DataFrame modify
     center, _ = config_parse_freq(config[':FREQ:CENT'])
     span, unit = config_parse_freq(config[':FREQ:SPAN'])
@@ -81,7 +92,8 @@ def read_trace(data: str, config: dict = None) -> pd.DataFrame:
         points,
     )
     df.index.name = unit
-    return Trace(df)
+    sdf = df[usecols]  # Select cols
+    return Trace(sdf)
 
 
 def read_traces(*files, columns):
@@ -104,7 +116,6 @@ def title_renamer(filename: str) -> str:
 
 class Trace(pd.DataFrame):
     """pd.DataFrameのように扱えるTraceクラス"""
-
     def __init__(self, dataframe):
         super().__init__(dataframe)
         # marker設定
