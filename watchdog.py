@@ -23,7 +23,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from SAtraceWatchdog import tracer
 from SAtraceWatchdog.oneplot import plot_onefile
-from SAtraceWatchdog.dayplot import allplt_wtf
 
 
 def set_logger():
@@ -140,13 +139,13 @@ def loop(args):
             trss = tracer.read_traces(*files, usecols=['AVER'])
 
             # Waterfall plot
-            allplt_wtf(tracer.Trace(trss.T),
-                       title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
-                       cmap='viridis')
+            trss.heatmap(title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
+                         cmap='viridis')
 
             # Save file
             waterfall_filename = '{}/waterfall_{}_update.png'.format(
                 args.directory, day)
+            # ファイル数が一日分=288ファイルあったら
             # waterfall_{day}_update.pngを削除して、
             # waterfall_{day}.pngを保存する
             if len(files) >= number_of_files_in_a_day:
