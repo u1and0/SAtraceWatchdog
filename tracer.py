@@ -125,16 +125,19 @@ def title_renamer(filename: str) -> str:
 
 class Trace(pd.DataFrame):
     """pd.DataFrameのように扱えるTraceクラス"""
+    # marker設定
+    # "marker":[19.2, 19.8,22.2,24.2,23.4]
+    # のような形式でconfig/marker.jsonファイルに記述する
+    _dirname = Path(__file__).parent
+    _configfile = _dirname / 'config/marker.json'
+    marker = []
+
     def __init__(self, dataframe):
         super().__init__(dataframe)
-        # marker設定
-        # "marker":[19.2, 19.8,22.2,24.2,23.4]
-        # のような形式でconfig/marker.jsonファイルに記述する
-        _dirname = Path(__file__).parent
-        with open(_dirname / 'config/marker.json') as f:
+        with open(Trace._configfile) as f:
             _config = json.load(f)
-        self.marker = _config['marker']
-        self.marker.sort()
+        Trace.marker = _config['marker']
+        Trace.marker.sort()
 
     def noisefloor(self, axis: int = 0, percent: float = 25):
         """ 1/4 medianをノイズフロアとし、各列に適用して返す
