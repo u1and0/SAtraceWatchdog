@@ -92,17 +92,26 @@ def read_trace(
         points,
     )
     df.index.name = unit
-    sdf = df[usecols]  # Select cols
-    return Trace(sdf)
+    if usecols:
+        df = df[usecols]  # Select cols
+    return Trace(df)
 
 
-def read_traces(*files, columns):
-    """複数ファイルにread_trace()して1つのTraceにまとめる"""
-    df = pd.DataFrame({
-        datetime.datetime.strptime(Path(f).stem, '%Y%m%d_%H%M%S'):  # basename
-        read_trace(f).loc[:, columns]  # read data & cut only one column
-        for f in files
-    })
+def read_traces(*files, usecols=None, **kwargs):
+    """複数ファイルにread_trace()して1つのTraceにまとめる
+
+    usecolsを指定しないとValueError
+    ['AVER'], ['MINH'], ['MAXH']などを指定する。
+    """
+    try:
+        df = pd.DataFrame({
+            datetime.datetime.strptime(Path(f).stem,
+                                       '%Y%m%d_%H%M%S'):  # basename
+            read_trace(f, usecols=usecols, *kwargs).squeeze()
+            for f in files
+        })
+    except ValueError:
+        raise ValueError('usecols=["AVER"] などを指定してください')
     return Trace(df)
 
 
