@@ -17,14 +17,12 @@ import os
 import argparse
 from time import sleep
 import datetime
-from glob import iglob
+import glob
+import logging
 from pathlib import Path
 import matplotlib.pyplot as plt
-import pandas as pd
-import logging
 from SAtraceWatchdog import tracer
 from SAtraceWatchdog.oneplot import plot_onefile
-from SAtraceWatchdog.dayplot import allplt_wtf
 
 
 def set_logger():
@@ -105,28 +103,61 @@ def loop(args):
     """ファイル差分チェックを実行し、pngファイルを保存する
     Ctrl+Cで止めない限り続く
     """
-    log = logging.getLogger(__name__)
-    while True:
-        txts = {Path(i).stem for i in iglob(args.glob + '.txt')}
-        out = args.directory + '/'  # append directory last '/'
-        pngs = {Path(i).stem for i in iglob(out + args.glob + '.png')}
+    day_second = 60 * 60 * 24
+    interval = 300
+    number_of_files_in_a_day = day_second / interval
 
+    log = logging.getLogger(__name__)
+    log.info('Watching start... arguments: {}'.format(args))
+    while True:
+        txts = {Path(i).stem for i in glob.iglob(args.glob + '.txt')}
+        out = args.directory + '/'  # append directory last '/'
+        pngs = {Path(i).stem for i in glob.iglob(out + args.glob + '.png')}
+
+        # ---
+        # One file plot
+        # ---
         # txtファイルだけあってpngがないファイルに対して実行
         for base in txts - pngs:
             plot_onefile(base + '.txt', directory=args.directory)
             log.info('Succeeded export image {}{}.png'.format(out, base))
 
-        # dayplot()
-        start, end = pd.Timestamp('20200401'), pd.Timestamp('20200831')
-        for day in pd.date_range(start, end).strftime('%Y%m%d'):
-            files = iglob(f'{day}_*.txt')
-            trss = tracer.read_traces(*files, columns='AVER')
-            allplt_wtf(tracer.Trace(trss.T), title=day, cmap='viridis')
+        # ---
+        # Daily plot
+        # ---
+        # filename format must be [ %Y%m%d_%H%M%S.txt ]
+        days_set = {_[:8] for _ in txts}
+        # txts directory 内にある%Y%m%dのsetに対して実行
+        for day in days_set:
+            # waterfall_{day}.pngが存在すれば最終処理が完了しているので
+            # waterfallをプロットしない -> 次のfor iterへ行く
+            if Path(f'{args.directory}/waterfall_{day}.png').exists():
+                continue
+            # waterfall_{day}.pngが存在しなければ最終処理が完了していないので
+            # waterfalll_{day}_update.pngを作成する
+            files = glob.glob(f'{day}_*.txt')
+            trss = tracer.read_traces(*files, usecols=['AVER'])
+
+            # Waterfall plot
+            trss.heatmap(title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
+                         cmap='viridis')
+
+            # Save file
+            waterfall_filename = '{}/waterfall_{}_update.png'.format(
+                args.directory, day)
+            # ファイル数が一日分=288ファイルあったら
+            # waterfall_{day}_update.pngを削除して、
+            # waterfall_{day}.pngを保存する
+            if len(files) >= number_of_files_in_a_day:
+                os.remove(waterfall_filename)
+                waterfall_filename = '{}/waterfall_{}.png'.format(
+                    args.directory, day)
             if args.directory:
-                plt.savefig(args.directory + '/waterfall_' + day + '.png')
-                # ファイルに保存する時plt.close()しないと
+                plt.savefig(waterfall_filename)
+                # ファイルに保存するときplt.close()しないと
                 # 複数プロットが1pngファイルに表示される
                 plt.close()  # reset plot
+            log.info('Succeeded export image {}'.format(waterfall_filename))
 
         sleep(args.sleepsec)
 
@@ -135,7 +166,6 @@ def main():
     """Entry point"""
     set_logger()
     args = arg_parse()
-    print(args)
     directory_check(args.directory)
     loop(args)
 
