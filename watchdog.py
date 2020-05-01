@@ -3,7 +3,7 @@
 txtファイルとpngファイルの差分をチェックして、グラフ化されていないファイルだけpng化します。
 
 Usage:
-    $ watchgraph.py --directory ../png --glob '2020/*' --sleepsec 300
+    $ watchdog.py --directory ../png --glob '2020/*' --sleepsec 300
 
 上のスクリプトは
 
