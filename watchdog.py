@@ -145,10 +145,13 @@ def loop(args):
             # Save file
             waterfall_filename = '{}/waterfall_{}_update.png'.format(
                 args.directory, day)
+            # _update.pngが存在して、かつ
+            file_exist = Path(waterfall_filename).exists()
             # ファイル数が一日分=288ファイルあったら
             # waterfall_{day}_update.pngを削除して、
             # waterfall_{day}.pngを保存する
-            if len(files) >= number_of_files_in_a_day:
+            number_of_files_ok = len(files) >= number_of_files_in_a_day
+            if file_exist and number_of_files_ok:
                 os.remove(waterfall_filename)
                 waterfall_filename = '{}/waterfall_{}.png'.format(
                     args.directory, day)
