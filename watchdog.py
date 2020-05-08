@@ -1,16 +1,6 @@
 #!/usr/bin/env python3
 """ txt監視可視化ツール
 txtファイルとpngファイルの差分をチェックして、グラフ化されていないファイルだけpng化します。
-
-Usage:
-    $ watchdog.py --directory ../png --glob '2020/*' --sleepsec 300
-
-上のスクリプトは
-
-* ../pngディレクトリにpngファイルを出力します。
-* 2020が接頭に着くファイルのみを処理します。
-* 300秒ごとにtxtファイルとpngファイルの差分をチェックします。
-* スター(*)はshell上で展開されてしまうのを防ぐためにバックスラッシュエスケープが必要。
 """
 import sys
 import os
@@ -18,11 +8,22 @@ import argparse
 from time import sleep
 import datetime
 import glob
+import json
 import logging
 from pathlib import Path
 import matplotlib.pyplot as plt
 from SAtraceWatchdog import tracer
 from SAtraceWatchdog.oneplot import plot_onefile
+import slack
+
+# json configの読み込み
+ROOT = Path(__file__).parent
+_CONFIGFILE = ROOT / 'config/config.json'
+if _CONFIGFILE.exists():
+    with open(_CONFIGFILE, 'r') as f:
+        CONFIG = json.load(f)
+else:
+    raise FileNotFoundError
 
 
 def set_logger():
@@ -47,10 +48,9 @@ def set_logger():
     root_logger.addHandler(console_handler)
 
     # ファイル用ハンドラの作成
-    basename = Path(__file__).parent
     timestamp = datetime.datetime.now().strftime('%y%m%d_%H%M%S')
     file_handler = logging.handlers.RotatingFileHandler(
-        filename=f'{basename}/log/watchdog_{timestamp}.log',
+        filename=f'{ROOT}/log/watchdog_{timestamp}.log',
         maxBytes=1e6,
         encoding='utf-8',
         backupCount=3)
@@ -69,6 +69,10 @@ def arg_parse():
     parser.add_argument('-d',
                         '--directory',
                         help='出力ディレクトリ',
+                        default=os.getcwd())
+    parser.add_argument('-l',
+                        '--log-directory',
+                        help='ログファイル出力ディレクトリ',
                         default=os.getcwd())
     parser.add_argument('-g',
                         '--glob',
@@ -104,7 +108,7 @@ def loop(args):
     Ctrl+Cで止めない限り続く
     """
     day_second = 60 * 60 * 24
-    interval = 300
+    interval = CONFIG['transfer_rate']
     number_of_files_in_a_day = day_second / interval
 
     log = logging.getLogger(__name__)
@@ -120,7 +124,14 @@ def loop(args):
         # txtファイルだけあってpngがないファイルに対して実行
         for base in txts - pngs:
             plot_onefile(base + '.txt', directory=args.directory)
-            log.info('Succeeded export image {}{}.png'.format(out, base))
+            message = 'Succeeded export image {}{}.png'.format(out, base)
+            log.info(message)
+            slack.upload(
+                filename=f'{out}{base}.png',
+                message=message,
+                token=CONFIG['token'],
+                channels=CONFIG['channel_id'],
+            )
 
         # ---
         # Daily plot
@@ -160,7 +171,14 @@ def loop(args):
                 # ファイルに保存するときplt.close()しないと
                 # 複数プロットが1pngファイルに表示される
                 plt.close()  # reset plot
-            log.info('Succeeded export image {}'.format(waterfall_filename))
+            message = 'Succeeded export image {}'.format(waterfall_filename)
+            log.info(message)
+            slack.upload(
+                filename=waterfall_filename,
+                message=message,
+                token=CONFIG['token'],
+                channels=CONFIG['channel_id'],
+            )
 
         sleep(args.sleepsec)
 
