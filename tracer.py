@@ -166,9 +166,9 @@ class Trace(pd.DataFrame):
     """pd.DataFrameのように扱えるTraceクラス"""
     # marker設定
     # "marker":[19.2, 19.8,22.2,24.2,23.4]
-    # のような形式でconfig/marker.jsonファイルに記述する
+    # のような形式でconfig/config.jsonファイルに記述する
     _dirname = Path(__file__).parent
-    _configfile = _dirname / 'config/marker.json'
+    _configfile = _dirname / 'config/config.json'
     marker = []
 
     def __init__(self, dataframe):
