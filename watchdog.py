@@ -10,6 +10,7 @@ import datetime
 import glob
 import json
 import logging
+from logging import handlers
 from pathlib import Path
 import matplotlib.pyplot as plt
 from SAtraceWatchdog import tracer
@@ -26,7 +27,7 @@ else:
     raise FileNotFoundError
 
 
-def set_logger():
+def set_logger(logdir):
     """コンソール用ロガーハンドラと
     ファイル用ロガーハンドラを作成し、
     ルートロガーに追加する
@@ -49,8 +50,8 @@ def set_logger():
 
     # ファイル用ハンドラの作成
     timestamp = datetime.datetime.now().strftime('%y%m%d_%H%M%S')
-    file_handler = logging.handlers.RotatingFileHandler(
-        filename=f'{ROOT}/log/watchdog_{timestamp}.log',
+    file_handler = handlers.RotatingFileHandler(
+        filename=f'{logdir}/watchdog_{timestamp}.log',
         maxBytes=1e6,
         encoding='utf-8',
         backupCount=3)
@@ -71,7 +72,7 @@ def arg_parse():
                         help='出力ディレクトリ',
                         default=os.getcwd())
     parser.add_argument('-l',
-                        '--log-directory',
+                        '--logdirectory',
                         help='ログファイル出力ディレクトリ',
                         default=os.getcwd())
     parser.add_argument('-g',
@@ -185,8 +186,8 @@ def loop(args):
 
 def main():
     """Entry point"""
-    set_logger()
     args = arg_parse()
+    set_logger(logdir=args.logdirectory)
     directory_check(args.directory)
     loop(args)
 
