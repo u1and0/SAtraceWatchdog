@@ -11,23 +11,25 @@
 #           --sleepsec 300
 
 FROM python:3.8-slim
-RUN pip install --upgrade --no-cache-dir pandas matplotlib seaborn
-RUN pip install --upgrade --no-cache-dir requests
+COPY requirements.txt requirements.txt
+RUN pip install --upgrade --no-cache-dir -r requirements.txt
 RUN apt-get update &&\
-    apt-get install -y fonts-ipafont fontconfig &&\
-    fc-cache -fv
+    apt-get install -y fonts-ipafont \
+                        fontconfig \
+                        tzdata &&\
+    fc-cache -fv &&\
+    apt-get clean
+ENV TZ Asia/Tokyo
 
-COPY ./__init__.py /usr/bin/SAtraceWatchdog/
-COPY ./oneplot.py /usr/bin/SAtraceWatchdog/
-COPY ./tracer.py /usr/bin/SAtraceWatchdog/
-COPY ./watchdog.py /usr/bin/SAtraceWatchdog/
-COPY ./slack.py /usr/bin/SAtraceWatchdog/
+COPY __init__.py /usr/bin/SAtraceWatchdog/
+COPY oneplot.py /usr/bin/SAtraceWatchdog/
+COPY tracer.py /usr/bin/SAtraceWatchdog/
+COPY watchdog.py /usr/bin/SAtraceWatchdog/
+COPY slack.py /usr/bin/SAtraceWatchdog/
 RUN chmod -R +x /usr/bin/SAtraceWatchdog
 ENV PYTHONPATH="/usr/bin"
 ENTRYPOINT ["/usr/bin/SAtraceWatchdog/watchdog.py"]
-# recommend option
-# --directory /png --log-directory /log --glob '2020*' --sleepsec 300
 
 LABEL maintainer="u1and0 <e01.ando60@gmail.com>" \
       description="txtファイルとpngファイルの差分をチェックして、グラフ化されていないファイルだけpng化します" \
-      version="SAtraceWatchdog:v0.0.0"
+      version="u1and0/satracewatchdog:v0.0.0"
