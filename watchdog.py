@@ -84,6 +84,7 @@ def arg_parse():
                         help='チェック間隔(sec)',
                         type=int,
                         default=10)
+    parser.add_argument('--debug', help='debug機能有効化', action='store_true')
     args = parser.parse_args()
     return args
 
@@ -114,7 +115,11 @@ def loop(args):
 
     log = logging.getLogger(__name__)
     log.info('Watching start... arguments: {}'.format(args))
+
     while True:
+        # Slack setting
+        slackbot = slack.Slack(CONFIG['token'], CONFIG['channel_id'])
+
         txts = {Path(i).stem for i in glob.iglob(args.glob + '.txt')}
         out = args.directory + '/'  # append directory last '/'
         pngs = {Path(i).stem for i in glob.iglob(out + args.glob + '.png')}
@@ -126,13 +131,10 @@ def loop(args):
         for base in txts - pngs:
             plot_onefile(base + '.txt', directory=args.directory)
             message = 'Succeeded export image {}{}.png'.format(out, base)
+            if args.debug:
+                message = '[DEBUG] ' + message
             log.info(message)
-            slack.upload(
-                filename=f'{out}{base}.png',
-                message=message,
-                token=CONFIG['token'],
-                channels=CONFIG['channel_id'],
-            )
+            slackbot.upload(filename=f'{out}{base}.png', message=message)
 
         # ---
         # Daily plot
@@ -173,13 +175,10 @@ def loop(args):
                 # 複数プロットが1pngファイルに表示される
                 plt.close()  # reset plot
             message = 'Succeeded export image {}'.format(waterfall_filename)
+            if args.debug:
+                message = '[DEBUG] ' + message
             log.info(message)
-            slack.upload(
-                filename=waterfall_filename,
-                message=message,
-                token=CONFIG['token'],
-                channels=CONFIG['channel_id'],
-            )
+            slackbot.upload(filename=waterfall_filename, message=message)
 
         sleep(args.sleepsec)
 
