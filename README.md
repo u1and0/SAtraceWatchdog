@@ -3,34 +3,41 @@ txtファイルとpngファイルの差分をチェックして、グラフ化�
 
 ## Installation
 
+```
+$ git clone https://github.com/u1and0/SAtraceWatchdog.git
+```
 
+or use docker
+
+```
+$ docker run -d \
+             -v `pwd`/data:/data \
+             -v `pwd`/png:/png \
+             -v `pwd`/log:/log \
+             -v `pwd`/config:/usr/bin/SAtraceWatchdog/config \
+             u1and0/SAtraceWatchdog \
+             --directory /png \
+             --log-directory /log \
+```
 
 ## Usage
 
 ```
-usage: watchdog.py [-h] [-d DIRECTORY] [-g GLOB] [-s SLEEPSEC]
+usage: watchdog.py [-h] [-d DIRECTORY] [-l LOGDIRECTORY] [--debug]
 
+txt監視可視化ツール txtファイルとpngファイルの差分をチェックして、グラフ化されていないファイルだけpng化します。
 
 optional arguments:
-  -h, --help            show this help message and exit
-  -d DIRECTORY, --directory DIRECTORY
-                        出力ディレクトリ
-  -g GLOB, --glob GLOB  入力ファイル名にglobパターンを使う
-  -s SLEEPSEC, --sleepsec SLEEPSEC
-                        チェック間隔(sec)
+-h, --help            show this help message and exit
+-d DIRECTORY, --directory DIRECTORY
+¦   ¦   ¦   ¦   ¦   出力ディレクトリ
+-l LOGDIRECTORY, --logdirectory LOGDIRECTORY
+¦   ¦   ¦   ¦   ¦   ログファイル出力ディレクトリ
+--debug               debug機能有効化
 ```
 
 ## Overview
 
-Usage:
-    $ watchdog.py --directory ../png --glob '2020/*' --sleepsec 300
-
-上のスクリプトは
-
-* ../pngディレクトリにpngファイルを出力します。
-* 2020が接頭に着くファイルのみを処理します。
-* 300秒ごとにtxtファイルとpngファイルの差分をチェックします。
-* スター(\*)はshell上で展開されてしまうのを防ぐためにバックスラッシュエスケープが必要。
 
 5分ごとのグラフ化(自動)
 →SAtraceWatchdog.watchdog.py

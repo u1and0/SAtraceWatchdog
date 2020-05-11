@@ -1,14 +1,13 @@
 # txt監視可視化ツール
 # txtファイルとpngファイルの差分をチェックして、グラフ化されていないファイルだけpng化します。
-# Usage: docker run -d
-#           -v `pwd`:/data\
-#           -v ../png:/png\
-#           -v ../log:/log\
-#           u1and0/SAtraceWatchdog\
-#           --directory /png\
-#           --log-directory /log\
-#           --glob '2020*'\
-#           --sleepsec 300
+# Usage: docker run -d \
+#           -v `pwd`/data:/data \
+#           -v `pwd`/png:/png \
+#           -v `pwd`/log:/log \
+#           -v `pwd`/config:/usr/bin/SAtraceWatchdog/config \
+#           u1and0/SAtraceWatchdog \
+#           --directory /png \
+#           --log-directory /log \
 
 FROM python:3.8-slim
 COPY requirements.txt requirements.txt
