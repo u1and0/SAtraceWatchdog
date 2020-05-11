@@ -81,14 +81,13 @@ def directory_check(directory):
     存在しなければ作成する
     存在はするがディレクトリではないとき、エラーを返す。
     """
-    log = logging.getLogger(__name__)
     makedir = Path(directory)
     if not makedir.exists():  # 存在しないディレクトリ指定でディレクトリ作成
         makedir.mkdir()
-        log.info(f'Make directory {makedir.resolve()}')
+        LOG.info(f'Make directory {makedir.resolve()}')
     if not makedir.is_dir():  # 存在はするけれどもディレクトリ以外を指定されたらエラー
         message = f'{makedir.resolve()} is not directory'
-        log.error(message)
+        LOG.error(message)
         raise IOError(message)
 
 
@@ -97,7 +96,6 @@ def loop(args):
     Ctrl+Cで止めない限り続く
     """
     day_second = 60 * 60 * 24
-    log = logging.getLogger(__name__)
     last_config = {}
     while True:
         # config file読込
@@ -106,7 +104,7 @@ def loop(args):
         # 前回のconfigとことなる内容が読み込まれたらログに出力
         if not config == last_config:
             last_config = config
-            log.info(f'[CONFIG] {config}')
+            LOG.info(f'CONFIG update {config}')
 
         # Slack setting
         slackbot = slack.Slack(config['token'], config['channel_id'])
@@ -127,7 +125,7 @@ def loop(args):
             message = 'Succeeded export image {}{}.png'.format(out, base)
             if args.debug:
                 message = '[DEBUG] ' + message
-            log.info(message)
+            LOG.info(message)
             slackbot.upload(filename=f'{out}{base}.png', message=message)
 
         # ---
@@ -172,7 +170,7 @@ def loop(args):
             message = 'Succeeded export image {}'.format(waterfall_filename)
             if args.debug:
                 message = '[DEBUG] ' + message
-            log.info(message)
+            LOG.info(message)
             slackbot.upload(filename=waterfall_filename, message=message)
 
         sleep(config['check_rate'])  # Interval for next loop
@@ -180,18 +178,16 @@ def loop(args):
 
 def read_config_json(configfile):
     """config.json の読み込み"""
-    if not configfile.exists():
-        raise FileNotFoundError
+    if not Path(configfile).exists():
+        message = f'{configfile} does not exist.'
+        LOG.error(message)
+        raise FileNotFoundError(message)
     with open(configfile, 'r') as f:
         return json.load(f)
 
 
-def main():
-    """Entry point"""
+if __name__ == '__main__':
     args = arg_parse()
-
-    # root = Path(__file__).parent
-    # _CONFIGFILE = root / 'config/config.json'
 
     # directory 確認、なければ作る
     directory_check(args.directory)  # 出力先directoryがなければ作る
@@ -199,11 +195,7 @@ def main():
 
     # loggerの設定
     set_logger(logdir=args.logdirectory)
-    log = logging.getLogger(__name__)
-    log.info('Watching start... arguments: {}'.format(args))
+    LOG = logging.getLogger(__name__)
+    LOG.info('Watching start... arguments: {}'.format(args))
 
     loop(args)
-
-
-if __name__ == '__main__':
-    main()
