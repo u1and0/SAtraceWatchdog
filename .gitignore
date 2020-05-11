@@ -2,6 +2,6 @@
 /png/
 tags
 /note/
-/config/
+/config/*.json
 G*
 MEMO.md

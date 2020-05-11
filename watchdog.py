@@ -15,16 +15,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from SAtraceWatchdog import tracer
 from SAtraceWatchdog.oneplot import plot_onefile
-import slack
-
-# json configの読み込み
-ROOT = Path(__file__).parent
-_CONFIGFILE = ROOT / 'config/config.json'
-if _CONFIGFILE.exists():
-    with open(_CONFIGFILE, 'r') as f:
-        CONFIG = json.load(f)
-else:
-    raise FileNotFoundError
+from SAtraceWatchdog import slack
 
 
 def set_logger(logdir):
@@ -36,7 +27,7 @@ def set_logger(logdir):
     root_logger = logging.getLogger('')
     root_logger.setLevel(logging.INFO)
 
-    # フォーマッターの作成 INFO: 2020/3/21 Succeeded...
+    # フォーマッターの作成
     formatter = logging.Formatter(
         fmt='[%(levelname)s] %(module)-10s : %(asctime)s %(message)s')
 
@@ -67,23 +58,19 @@ def arg_parse():
     ディレクトリとチェック間隔(秒)を指定する
     """
     parser = argparse.ArgumentParser(description=__doc__)
+    root = Path(__file__).parent
     parser.add_argument('-d',
                         '--directory',
                         help='出力ディレクトリ',
-                        default=os.getcwd())
+                        default=Path.cwd())
     parser.add_argument('-l',
                         '--logdirectory',
                         help='ログファイル出力ディレクトリ',
-                        default=os.getcwd())
-    parser.add_argument('-g',
-                        '--glob',
-                        help='入力ファイル名にglobパターンを使う',
-                        default='*')
-    parser.add_argument('-s',
-                        '--sleepsec',
-                        help='チェック間隔(sec)',
-                        type=int,
-                        default=10)
+                        default=root / 'log')
+    parser.add_argument('-c',
+                        '--configfile',
+                        help='設定ファイルのパス',
+                        default=root / 'config/config.json')
     parser.add_argument('--debug', help='debug機能有効化', action='store_true')
     args = parser.parse_args()
     return args
@@ -95,12 +82,12 @@ def directory_check(directory):
     存在はするがディレクトリではないとき、エラーを返す。
     """
     log = logging.getLogger(__name__)
-    pngdir = Path(directory)
-    if not pngdir.exists():  # 存在しないディレクトリ指定でディレクトリ作成
-        pngdir.mkdir()
-        log.info(f'Make directory {pngdir.resolve()}')
-    if not pngdir.is_dir():  # 存在はするけれどもディレクトリ以外を指定されたらエラー
-        message = f'{pngdir.resolve()} is not directory'
+    makedir = Path(directory)
+    if not makedir.exists():  # 存在しないディレクトリ指定でディレクトリ作成
+        makedir.mkdir()
+        log.info(f'Make directory {makedir.resolve()}')
+    if not makedir.is_dir():  # 存在はするけれどもディレクトリ以外を指定されたらエラー
+        message = f'{makedir.resolve()} is not directory'
         log.error(message)
         raise IOError(message)
 
@@ -110,19 +97,26 @@ def loop(args):
     Ctrl+Cで止めない限り続く
     """
     day_second = 60 * 60 * 24
-    interval = CONFIG['transfer_rate']
-    number_of_files_in_a_day = day_second / interval
-
     log = logging.getLogger(__name__)
-    log.info('Watching start... arguments: {}'.format(args))
-
+    last_config = {}
     while True:
-        # Slack setting
-        slackbot = slack.Slack(CONFIG['token'], CONFIG['channel_id'])
+        # config file読込
+        # ループごとに毎回jsonを読みに行く
+        config = read_config_json(args.configfile)
+        # 前回のconfigとことなる内容が読み込まれたらログに出力
+        if not config == last_config:
+            last_config = config
+            log.info(f'[CONFIG] {config}')
 
-        txts = {Path(i).stem for i in glob.iglob(args.glob + '.txt')}
+        # Slack setting
+        slackbot = slack.Slack(config['token'], config['channel_id'])
+
+        txts = {Path(i).stem for i in glob.iglob(config['glob'] + '.txt')}
         out = args.directory + '/'  # append directory last '/'
-        pngs = {Path(i).stem for i in glob.iglob(out + args.glob + '.png')}
+        pngs = {
+            Path(i).stem
+            for i in glob.iglob(out + config['glob'] + '.png')
+        }
 
         # ---
         # One file plot
@@ -150,7 +144,7 @@ def loop(args):
             # waterfall_{day}.pngが存在しなければ最終処理が完了していないので
             # waterfalll_{day}_update.pngを作成する
             files = glob.glob(f'{day}_*.txt')
-            trss = tracer.read_traces(*files, usecols=['AVER'])
+            trss = tracer.read_traces(*files, usecols=config['usecols'])
 
             # Waterfall plot
             trss.heatmap(title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
@@ -164,6 +158,7 @@ def loop(args):
             # ファイル数が一日分=288ファイルあったら
             # waterfall_{day}_update.pngを削除して、
             # waterfall_{day}.pngを保存する
+            number_of_files_in_a_day = day_second / config['transfer_rate']
             number_of_files_ok = len(files) >= number_of_files_in_a_day
             if file_exist and number_of_files_ok:
                 os.remove(waterfall_filename)
@@ -180,14 +175,33 @@ def loop(args):
             log.info(message)
             slackbot.upload(filename=waterfall_filename, message=message)
 
-        sleep(args.sleepsec)
+        sleep(config['check_rate'])  # Interval for next loop
+
+
+def read_config_json(configfile):
+    """config.json の読み込み"""
+    if not configfile.exists():
+        raise FileNotFoundError
+    with open(configfile, 'r') as f:
+        return json.load(f)
 
 
 def main():
     """Entry point"""
     args = arg_parse()
+
+    # root = Path(__file__).parent
+    # _CONFIGFILE = root / 'config/config.json'
+
+    # directory 確認、なければ作る
+    directory_check(args.directory)  # 出力先directoryがなければ作る
+    directory_check(args.logdirectory)  # log directoryがなければ作る
+
+    # loggerの設定
     set_logger(logdir=args.logdirectory)
-    directory_check(args.directory)
+    log = logging.getLogger(__name__)
+    log.info('Watching start... arguments: {}'.format(args))
+
     loop(args)
 
 
