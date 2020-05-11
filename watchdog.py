@@ -13,6 +13,7 @@ import logging
 from logging import handlers
 from pathlib import Path
 import matplotlib.pyplot as plt
+from collections import namedtuple
 from SAtraceWatchdog import tracer
 from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog import slack
@@ -100,21 +101,18 @@ def loop(args):
     while True:
         # config file読込
         # ループごとに毎回jsonを読みに行く
-        config = read_config_json(args.configfile)
+        config = load_config(args.configfile)
         # 前回のconfigとことなる内容が読み込まれたらログに出力
         if not config == last_config:
             last_config = config
-            LOG.info(f'CONFIG update {config}')
+            LOG.info(f'Update {config}')
 
         # Slack setting
-        slackbot = slack.Slack(config['token'], config['channel_id'])
+        slackbot = slack.Slack(config.token, config.channel_id)
 
-        txts = {Path(i).stem for i in glob.iglob(config['glob'] + '.txt')}
+        txts = {Path(i).stem for i in glob.iglob(config.glob + '.txt')}
         out = args.directory + '/'  # append directory last '/'
-        pngs = {
-            Path(i).stem
-            for i in glob.iglob(out + config['glob'] + '.png')
-        }
+        pngs = {Path(i).stem for i in glob.iglob(out + config.glob + '.png')}
 
         # ---
         # One file plot
@@ -142,7 +140,7 @@ def loop(args):
             # waterfall_{day}.pngが存在しなければ最終処理が完了していないので
             # waterfalll_{day}_update.pngを作成する
             files = glob.glob(f'{day}_*.txt')
-            trss = tracer.read_traces(*files, usecols=config['usecols'])
+            trss = tracer.read_traces(*files, usecols=config.usecols)
 
             # Waterfall plot
             trss.heatmap(title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
@@ -156,7 +154,7 @@ def loop(args):
             # ファイル数が一日分=288ファイルあったら
             # waterfall_{day}_update.pngを削除して、
             # waterfall_{day}.pngを保存する
-            number_of_files_in_a_day = day_second / config['transfer_rate']
+            number_of_files_in_a_day = day_second / config.transfer_rate
             number_of_files_ok = len(files) >= number_of_files_in_a_day
             if file_exist and number_of_files_ok:
                 os.remove(waterfall_filename)
@@ -173,17 +171,32 @@ def loop(args):
             LOG.info(message)
             slackbot.upload(filename=waterfall_filename, message=message)
 
-        sleep(config['check_rate'])  # Interval for next loop
+        sleep(config.check_rate)  # Interval for next loop
 
 
-def read_config_json(configfile):
-    """config.json の読み込み"""
+def load_config(configfile):
+    """configの読み込み
+    config.json を読み込み、
+    config_keysに指定されたワードのみをConfigとして返す
+    """
     if not Path(configfile).exists():
         message = f'{configfile} does not exist.'
         LOG.error(message)
         raise FileNotFoundError(message)
     with open(configfile, 'r') as f:
-        return json.load(f)
+        config_dict = json.load(f)
+    config_keys = [
+        'channel_id',
+        'check_rate',
+        'glob',
+        'marker',
+        'token',
+        'transfer_rate',
+        'usecols',
+    ]
+    Config = namedtuple('Config', config_keys)
+    authorized_config = Config(**{k: config_dict[k] for k in config_keys})
+    return authorized_config
 
 
 if __name__ == '__main__':
