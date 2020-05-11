@@ -12,11 +12,11 @@ import json
 import logging
 from logging import handlers
 from pathlib import Path
-import matplotlib.pyplot as plt
 from collections import namedtuple
+import matplotlib.pyplot as plt
 from SAtraceWatchdog import tracer
 from SAtraceWatchdog.oneplot import plot_onefile
-from SAtraceWatchdog import slack
+from SAtraceWatchdog.slack import Slack
 
 
 def set_logger(logdir):
@@ -68,16 +68,12 @@ def arg_parse():
                         '--logdirectory',
                         help='ログファイル出力ディレクトリ',
                         default=root / 'log')
-    parser.add_argument('-c',
-                        '--configfile',
-                        help='設定ファイルのパス',
-                        default=root / 'config/config.json')
     parser.add_argument('--debug', help='debug機能有効化', action='store_true')
     args = parser.parse_args()
     return args
 
 
-def directory_check(directory):
+def directory_check(directory, log):
     """指定されたディレクトリをチェックする
     存在しなければ作成する
     存在はするがディレクトリではないとき、エラーを返す。
@@ -85,10 +81,10 @@ def directory_check(directory):
     makedir = Path(directory)
     if not makedir.exists():  # 存在しないディレクトリ指定でディレクトリ作成
         makedir.mkdir()
-        LOG.info(f'ディレクトリの作成に成功しました {makedir.resolve()}')
+        log.info(f'ディレクトリの作成に成功しました {makedir.resolve()}')
     if not makedir.is_dir():  # 存在はするけれどもディレクトリ以外を指定されたらエラー
         message = f'{makedir.resolve()} はディレクトリではありません'
-        LOG.error(message)
+        log.error(message)
         raise IOError(message)
 
 
@@ -100,23 +96,29 @@ def guess_fallout(df):
     return nan_idx
 
 
-def loop(args):
+def loop(args, log):
     """ファイル差分チェックを実行し、pngファイルを保存する
     Ctrl+Cで止めない限り続く
     """
     day_second = 60 * 60 * 24
-    last_config = {}
+    last_config = None
+    root = Path(__file__).parent
+    configfile = root / 'config/config.json'
+    slackbot = Slack()
+
     while True:
         # config file読込
         # ループごとに毎回jsonを読みに行く
-        config = load_config(args.configfile)
+        if not Path(configfile).exists():
+            message = f'設定ファイル {configfile} が存在しません'
+            log.error(message)
+            slackbot.message(message)
+            raise FileNotFoundError(message)
+        config = load_config(configfile)
         # 前回のconfigとことなる内容が読み込まれたらログに出力
         if not config == last_config:
             last_config = config
-            LOG.info(f'設定が更新されました {config}')
-
-        # Slack setting
-        slackbot = slack.Slack(config.token, config.channel_id)
+            log.info(f'設定が更新されました {config}')
 
         txts = {Path(i).stem for i in glob.iglob(config.glob + '.txt')}
         out = args.directory + '/'  # append directory last '/'
@@ -131,7 +133,7 @@ def loop(args):
             message = '画像の出力に成功しました {}{}.png'.format(out, base)
             if args.debug:
                 message = '[DEBUG] ' + message
-            LOG.info(message)
+            log.info(message)
             slackbot.upload(filename=f'{out}{base}.png', message=message)
 
         # ---
@@ -153,8 +155,8 @@ def loop(args):
             # データの抜けを検証
             droped_data = guess_fallout(trss.T)
             if any(droped_data):
-                message = f'データの抜けが生じている可能性が有ります {droped_data}'
-                LOG.warning(message)
+                message = f'データの抜けが生じている可能性があります {droped_data}'
+                log.warning(message)
                 slackbot.message(message)
 
             # Waterfall plot
@@ -183,7 +185,7 @@ def loop(args):
             message = '画像の出力に成功しました {}'.format(waterfall_filename)
             if args.debug:
                 message = '[DEBUG] ' + message
-            LOG.info(message)
+            log.info(message)
             slackbot.upload(filename=waterfall_filename, message=message)
 
         sleep(config.check_rate)  # Interval for next loop
@@ -194,18 +196,12 @@ def load_config(configfile):
     config.json を読み込み、
     config_keysに指定されたワードのみをConfigとして返す
     """
-    if not Path(configfile).exists():
-        message = f'設定ファイル {configfile} が存在しません'
-        LOG.error(message)
-        raise FileNotFoundError(message)
     with open(configfile, 'r') as f:
         config_dict = json.load(f)
     config_keys = [
-        'channel_id',
         'check_rate',
         'glob',
         'marker',
-        'token',
         'transfer_rate',
         'usecols',
     ]
@@ -214,16 +210,22 @@ def load_config(configfile):
     return authorized_config
 
 
-if __name__ == '__main__':
+def main():
+    """entry point"""
     args = arg_parse()
-
-    # directory 確認、なければ作る
-    directory_check(args.directory)  # 出力先directoryがなければ作る
-    directory_check(args.logdirectory)  # log directoryがなければ作る
 
     # loggerの設定
     set_logger(logdir=args.logdirectory)
-    LOG = logging.getLogger(__name__)
-    LOG.info('ディレクトリの監視を開始しました... arguments: {}'.format(args))
+    log = logging.getLogger(__name__)
+    log.info('ディレクトリの監視を開始しました... arguments: {}'.format(args))
 
-    loop(args)
+    # directory 確認、なければ作る
+    directory_check(args.directory, log)  # 出力先directoryがなければ作る
+    directory_check(args.logdirectory, log)  # log directoryがなければ作る
+
+    # main loop ディレクトリ監視してtxt->png化
+    loop(args, log)
+
+
+if __name__ == '__main__':
+    main()
