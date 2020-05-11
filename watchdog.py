@@ -85,11 +85,19 @@ def directory_check(directory):
     makedir = Path(directory)
     if not makedir.exists():  # 存在しないディレクトリ指定でディレクトリ作成
         makedir.mkdir()
-        LOG.info(f'Make directory {makedir.resolve()}')
+        LOG.info(f'ディレクトリの作成に成功しました {makedir.resolve()}')
     if not makedir.is_dir():  # 存在はするけれどもディレクトリ以外を指定されたらエラー
-        message = f'{makedir.resolve()} is not directory'
+        message = f'{makedir.resolve()} はディレクトリではありません'
         LOG.error(message)
         raise IOError(message)
+
+
+def guess_fallout(df):
+    """データ抜けの可能性があるDatetimeIndexを返す"""
+    resample = df.resample('5T').first()  # 5min resample
+    bools = resample.isna().any(1)  # NaN行をTrueにする
+    nan_idx = bools[bools].index  # Trueのとこのインデックスだけ抽出
+    return nan_idx
 
 
 def loop(args):
@@ -105,7 +113,7 @@ def loop(args):
         # 前回のconfigとことなる内容が読み込まれたらログに出力
         if not config == last_config:
             last_config = config
-            LOG.info(f'Update {config}')
+            LOG.info(f'設定が更新されました {config}')
 
         # Slack setting
         slackbot = slack.Slack(config.token, config.channel_id)
@@ -120,7 +128,7 @@ def loop(args):
         # txtファイルだけあってpngがないファイルに対して実行
         for base in txts - pngs:
             plot_onefile(base + '.txt', directory=args.directory)
-            message = 'Succeeded export image {}{}.png'.format(out, base)
+            message = '画像の出力に成功しました {}{}.png'.format(out, base)
             if args.debug:
                 message = '[DEBUG] ' + message
             LOG.info(message)
@@ -141,6 +149,13 @@ def loop(args):
             # waterfalll_{day}_update.pngを作成する
             files = glob.glob(f'{day}_*.txt')
             trss = tracer.read_traces(*files, usecols=config.usecols)
+
+            # データの抜けを検証
+            droped_data = guess_fallout(trss.T)
+            if any(droped_data):
+                message = f'データの抜けが生じている可能性が有ります {droped_data}'
+                LOG.warning(message)
+                slackbot.message(message)
 
             # Waterfall plot
             trss.heatmap(title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
@@ -165,7 +180,7 @@ def loop(args):
                 # ファイルに保存するときplt.close()しないと
                 # 複数プロットが1pngファイルに表示される
                 plt.close()  # reset plot
-            message = 'Succeeded export image {}'.format(waterfall_filename)
+            message = '画像の出力に成功しました {}'.format(waterfall_filename)
             if args.debug:
                 message = '[DEBUG] ' + message
             LOG.info(message)
@@ -180,7 +195,7 @@ def load_config(configfile):
     config_keysに指定されたワードのみをConfigとして返す
     """
     if not Path(configfile).exists():
-        message = f'{configfile} does not exist.'
+        message = f'設定ファイル {configfile} が存在しません'
         LOG.error(message)
         raise FileNotFoundError(message)
     with open(configfile, 'r') as f:
@@ -209,6 +224,6 @@ if __name__ == '__main__':
     # loggerの設定
     set_logger(logdir=args.logdirectory)
     LOG = logging.getLogger(__name__)
-    LOG.info('Watching start... arguments: {}'.format(args))
+    LOG.info('ディレクトリの監視を開始しました... arguments: {}'.format(args))
 
     loop(args)

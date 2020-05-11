@@ -10,6 +10,7 @@ class Slack:
         self.channels = channels
 
     def upload(self, filename, message):
+        """slackに画像を投稿する"""
         name = Path(filename).name
         url = "https://slack.com/api/files.upload"
         data = {
@@ -20,3 +21,13 @@ class Slack:
         }
         files = {'file': open(filename, 'rb')}
         requests.post(url, data=data, files=files)
+
+    def message(self, message):
+        """slackにメッセージを投稿する"""
+        url = "https://slack.com/api/chat.postMessage"
+        data = {
+            "token": self.token,
+            "channel": self.channels,
+            "text": message,
+        }
+        requests.post(url, data=data)
