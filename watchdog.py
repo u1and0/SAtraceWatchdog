@@ -73,7 +73,7 @@ def arg_parse():
     return args
 
 
-def directory_check(directory, log):
+def directory_check(directory, log, slackbot):
     """指定されたディレクトリをチェックする
     存在しなければ作成する
     存在はするがディレクトリではないとき、エラーを返す。
@@ -81,10 +81,13 @@ def directory_check(directory, log):
     makedir = Path(directory)
     if not makedir.exists():  # 存在しないディレクトリ指定でディレクトリ作成
         makedir.mkdir()
-        log.info(f'ディレクトリの作成に成功しました {makedir.resolve()}')
+        message = f'ディレクトリの作成に成功しました {makedir.resolve()}'
+        log.info(message)
+        slackbot.message(message)
     if not makedir.is_dir():  # 存在はするけれどもディレクトリ以外を指定されたらエラー
         message = f'{makedir.resolve()} はディレクトリではありません'
         log.error(message)
+        slackbot.message(message)
         raise IOError(message)
 
 
@@ -96,7 +99,7 @@ def guess_fallout(df):
     return nan_idx
 
 
-def loop(args, log):
+def loop(args, log, slackbot):
     """ファイル差分チェックを実行し、pngファイルを保存する
     Ctrl+Cで止めない限り続く
     """
@@ -104,7 +107,6 @@ def loop(args, log):
     last_config = None
     root = Path(__file__).parent
     configfile = root / 'config/config.json'
-    slackbot = Slack()
 
     while True:
         # config file読込
@@ -118,7 +120,9 @@ def loop(args, log):
         # 前回のconfigとことなる内容が読み込まれたらログに出力
         if not config == last_config:
             last_config = config
-            log.info(f'設定が更新されました {config}')
+            message = f'設定が更新されました {config}'
+            log.info(message)
+            slackbot.message(message)
 
         txts = {Path(i).stem for i in glob.iglob(config.glob + '.txt')}
         out = args.directory + '/'  # append directory last '/'
@@ -214,17 +218,20 @@ def main():
     """entry point"""
     args = arg_parse()
 
-    # loggerの設定
+    # logger, slackbotの設定
     set_logger(logdir=args.logdirectory)
     log = logging.getLogger(__name__)
-    log.info('ディレクトリの監視を開始しました... arguments: {}'.format(args))
+    slackbot = Slack()
+    message = 'ディレクトリの監視を開始しました... arguments: {}'.format(args)
+    log.info(message)
+    slackbot.message(message)
 
     # directory 確認、なければ作る
-    directory_check(args.directory, log)  # 出力先directoryがなければ作る
-    directory_check(args.logdirectory, log)  # log directoryがなければ作る
+    directory_check(args.directory, log, slackbot)  # 出力先directoryがなければ作る
+    directory_check(args.logdirectory, log, slackbot)  # log directoryがなければ作る
 
     # main loop ディレクトリ監視してtxt->png化
-    loop(args, log)
+    loop(args, log, slackbot)
 
 
 if __name__ == '__main__':
