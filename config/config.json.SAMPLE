@@ -1,0 +1,10 @@
+{
+    "channel_id":"C015BHBALJA",
+    "check_rate":10,
+    "glob":"2015*",
+    "__comment__": "マーカープロットされる周波数マーカーのリスト。単位はkHz",
+    "marker":[132, 133.5, 141.2],
+    "token":"xoxb-1126627157493-1072282577837-XC48bpp0hYczTHjlS7fhHI93",
+    "transfer_rate":300,
+    "usecols":"AVER"
+}
