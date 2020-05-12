@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-from .tracer import Trace
+from tracer import Trace
 sns.set(style='whitegrid',
         palette='husl',
         font="IPAGothic",
@@ -75,17 +75,17 @@ def read_trace(data: str, config: dict = None) -> pd.DataFrame:
         with open(data, 'r') as f:
             config = read_conf(f.readline())
     # read DataFrame from filename or string
-    df = pd.read_table(data,
-                       sep='\s+',
-                       index_col=0,
-                       skiprows=1,
-                       skipfooter=1,
-                       names=[
-                           config[':TRAC1:TYPE'],
-                           config[':TRAC2:TYPE'],
-                           config[':TRAC3:TYPE'],
-                       ],
-                       engine='python')
+    df = pd.read_csv(data,
+                     sep='\s+',
+                     index_col=0,
+                     skiprows=1,
+                     skipfooter=1,
+                     names=[
+                         config[':TRAC1:TYPE'],
+                         config[':TRAC2:TYPE'],
+                         config[':TRAC3:TYPE'],
+                     ],
+                     engine='python')
     # DataFrame modify
     center, _ = config_parse_freq(config[':FREQ:CENT'])
     span, unit = config_parse_freq(config[':FREQ:SPAN'])
@@ -137,10 +137,7 @@ def main(outdir='.', sleepsec=10):
 
         # txtファイルだけあってpngがないファイルに対して実行
         for base in txts - pngs:
-            with open(base + '.txt') as f:
-                line = f.readline()  # NA設定読み取り
-            config = read_conf(line)
-            df = read_trace(base + '.txt', config)
+            df = read_trace(base + '.txt')
 
             # iloc <= 1:Minhold 2:Aver 3:Maxhold
             df.iloc[:, 2].plot(color='gray',
