@@ -36,6 +36,7 @@ class Watch:
     slackbot = Slack()
 
     def __init__(self):
+        """watchdog init"""
         self.last_config = None
         self.last_files = defaultdict(lambda: [])
         self.configfile = Watch.root / 'config/config.json'
@@ -147,6 +148,7 @@ class Watch:
         return filename
 
     def loop(self):
+        """pngファイルの出力とログ出力の無限ループ"""
         # config file読込
         # ループごとに毎回jsonを読みに行く
         if not Path(self.configfile).exists():
@@ -228,7 +230,8 @@ class Watch:
                 Watch.slackbot.message(message)
 
     def sleep(self):
-        sleep(self.config.check_rate)  # Interval for next loop
+        """Interval for next loop"""
+        sleep(self.config.check_rate)
 
     @staticmethod
     def guess_fallout(df):
