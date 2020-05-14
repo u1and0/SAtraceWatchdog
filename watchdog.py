@@ -12,7 +12,7 @@ import json
 import logging
 from logging import handlers
 from pathlib import Path
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 import matplotlib.pyplot as plt
 from SAtraceWatchdog import tracer
 from SAtraceWatchdog.oneplot import plot_onefile
@@ -37,6 +37,7 @@ class Watch:
 
     def __init__(self):
         self.last_config = None
+        self.last_files = defaultdict(lambda: [])
         self.configfile = Watch.root / 'config/config.json'
         self.config = None
 
@@ -193,16 +194,19 @@ class Watch:
                 continue
             # waterfall_{day}.pngが存在しなければ最終処理が完了していないので
             # waterfalll_{day}_update.pngを作成する
+
             files = glob.glob(f'{day}_*.txt')
+            if Watch.args.debug:
+                print('l:', set(self.last_files[day]))
+                print('f:', set(files))
+
+            # ファイルに更新がなければwaterfall_update.pngは出力しない
+            if set(self.last_files[day]) == set(files):
+                continue
+
+            # ファイルに更新があれば更新したwaterfall_update.pngを出力
+            self.last_files[day] = files
             trss = tracer.read_traces(*files, usecols=self.config.usecols)
-
-            # データの抜けを検証"""
-            droped_data = Watch.guess_fallout(trss.T)
-            if any(droped_data):
-                message = f'データが抜けています {droped_data}'
-                self.log.warning(message)
-                Watch.slackbot.message(message)
-
             filename = self.filename_resolver(yyyymmdd=day,
                                               number_of_files=len(files))
             trss.heatmap(title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
@@ -217,6 +221,13 @@ class Watch:
                 message = '[DEBUG] ' + message
             self.log.info(message)
             Watch.slackbot.upload(filename=filename, message=message)
+
+            # データの抜けを検証"""
+            droped_data = Watch.guess_fallout(trss.T)
+            if any(droped_data):
+                message = f'データが抜けています {droped_data}'
+                self.log.warning(message)
+                Watch.slackbot.message(message)
 
     def sleep(self):
         sleep(self.config.check_rate)  # Interval for next loop
