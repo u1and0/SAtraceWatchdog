@@ -39,6 +39,9 @@ class Watch:
         """watchdog init"""
         self.last_config = None
         self.last_files = defaultdict(lambda: [])
+        self.last_base = None
+        self.no_update_count = 0
+        self.no_update_threshold = 1
         self.configfile = Watch.root / 'config/config.json'
         self.config = None
 
@@ -168,12 +171,13 @@ class Watch:
         out = Watch.args.directory + '/'  # append directory last '/'
         txts = {Path(i).stem for i in glob.iglob(pattern + '.txt')}
         pngs = {Path(i).stem for i in glob.iglob(out + pattern + '.png')}
+        update_files = txts - pngs
 
         # ---
         # One file plot
         # ---
         # txtファイルだけあってpngがないファイルに対して実行
-        for base in txts - pngs:
+        for base in update_files:
             plot_onefile(base + '.txt', directory=Watch.args.directory)
             message = f'画像の出力に成功しました {Watch.args.directory}/{base}.png'
             if Watch.args.debug:
@@ -181,6 +185,14 @@ class Watch:
             self.log.info(message)
             Watch.slackbot.upload(
                 filename=f'{Watch.args.directory}/{base}.png', message=message)
+            # Reset count
+            self.no_update_count = 0
+            self.no_update_threshold = 2
+        else:  # update_filesが空で、更新がないとき
+            self.no_update_count += 1
+            if self.no_update_count > self.no_update_threshold:
+                self.no_update_warning()
+                self.no_update_threshold *= 2
 
         # ---
         # Daily plot
@@ -232,6 +244,18 @@ class Watch:
     def sleep(self):
         """Interval for next loop"""
         sleep(self.config.check_rate)
+
+    def no_update_warning(self):
+        """更新がしばらくないときにWarning上げる"""
+        no_uptime = self.no_update_count * self.config.transfer_rate
+        if no_uptime < 60:
+            message = f'最後の更新から{no_uptime}秒間更新がありません。データの送信状況を確認してください。'
+        elif no_uptime < 3600:
+            message = f'最後の更新から{no_uptime//60}分間更新がありません。データの送信状況を確認してください。'
+        else:
+            message = f'最後の更新から{no_uptime//3600}時間更新がありません。データの送信状況を確認してください。'
+        self.log.warning(message)
+        Watch.slackbot.message(message)
 
     @staticmethod
     def guess_fallout(df):
