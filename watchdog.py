@@ -173,8 +173,7 @@ class Watch:
         # txtファイルだけあってpngがないファイルに対して実行
         for base in txts - pngs:
             plot_onefile(base + '.txt', directory=Watch.args.directory)
-            message = '画像の出力に成功しました {}/{}.png'.format(Watch.args.directory,
-                                                      base)
+            message = f'画像の出力に成功しました {Watch.args.directory}/{base}.png'
             if Watch.args.debug:
                 message = '[DEBUG] ' + message
             self.log.info(message)
@@ -215,8 +214,7 @@ class Watch:
             # ファイルに保存するときplt.close()しないと
             # 複数プロットが1pngファイルに表示される
             plt.close()  # reset plot
-            # Log
-            message = '画像の出力に成功しました {}'.format(filename)
+            message = f'画像の出力に成功しました {filename}'
             if Watch.args.debug:
                 message = '[DEBUG] ' + message
             self.log.info(message)
