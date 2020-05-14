@@ -37,8 +37,19 @@ optional arguments:
 ```
 
 ## Overview
+* txtファイルとpngファイルの差分をチェックして、グラフ化されていないファイルだけpng化します。
+* 設定はconfig.jsonで行います。
+  * SAtraceWatchdogを再立ち上げする必要はありません。自動で反映されます。
+* ほとんどの通知をslackチャンネルに送信します。
+
+## Update
+v0.2.0  一定時間更新がないとWarningを送信します
+v0.1.0  [fix] log output piped to slackbot
+v0.0.0  initial tag
 
 
+
+### Others
 5分ごとのグラフ化(自動)
 →SAtraceWatchdog.watchdog.py
 
