@@ -43,6 +43,7 @@ optional arguments:
 * ほとんどの通知をslackチャンネルに送信します。
 
 ## Update
+v0.2.1  [mod] load config if configfile exist
 v0.2.0  一定時間更新がないとWarningを送信します
 v0.1.0  [fix] log output piped to slackbot
 v0.0.0  initial tag
