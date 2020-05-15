@@ -173,10 +173,11 @@ class Trace(pd.DataFrame):
 
     def __init__(self, dataframe):
         super().__init__(dataframe)
-        with open(Trace._configfile) as f:
-            _config = json.load(f)
-        Trace.marker = _config['marker']
-        Trace.marker.sort()
+        if Path(Trace._configfile).exists():
+            with open(Trace._configfile, 'r') as f:
+                _config = json.load(f)
+            Trace.marker = _config['marker']
+            Trace.marker.sort()
 
     def noisefloor(self, axis: int = 0, percent: float = 25):
         """ 1/4 medianをノイズフロアとし、各列に適用して返す
