@@ -183,8 +183,7 @@ class Watch:
             if Watch.args.debug:
                 message = '[DEBUG] ' + message
             self.log.info(message)
-            # Watch.slackbot.upload(
-            # filename=f'{Watch.args.directory}/{base}.png', message=message)
+            Watch.slackbot.message(message=message)
             # Reset count
             self.no_update_count = 0
             self.no_update_threshold = 2
@@ -232,7 +231,7 @@ class Watch:
             if Watch.args.debug:
                 message = '[DEBUG] ' + message
             self.log.info(message)
-            # Watch.slackbot.upload(filename=filename, message=message)
+            Watch.slackbot.message(message=message)
 
             # データの抜けを検証"""
             droped_data = Watch.guess_fallout(trss.T)
