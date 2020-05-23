@@ -43,6 +43,7 @@ optional arguments:
 * ほとんどの通知をslackチャンネルに送信します。
 
 ## Update
+v0.2.4          [fix] no data error raise
 v0.2.3          [fix] slack.upload() -> slack.message()
 v0.2.2          no slack upload()
 v0.2.1          [mod] load config if configfile exist
