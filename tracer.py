@@ -70,24 +70,37 @@ def read_trace(
         # 自動でdataの1行目をconfigとして読み込む
         with open(data, 'r') as f:
             config = read_conf(f.readline())
-    # read DataFrame from filename or string
+
+    # Set config
+    names = [
+        config[':TRAC1:TYPE'],
+        config[':TRAC2:TYPE'],
+        config[':TRAC3:TYPE'],
+    ]
+    center, _ = config_parse_freq(config[':FREQ:CENT'])
+    span, unit = config_parse_freq(config[':FREQ:SPAN'])
+    points = int(config[':SWE:POIN'])
+
+    # Read DataFrame from filename or string
     df = pd.read_csv(data,
                      sep='\s+',
                      index_col=0,
                      skiprows=1,
                      skipfooter=1,
-                     names=[
-                         config[':TRAC1:TYPE'],
-                         config[':TRAC2:TYPE'],
-                         config[':TRAC3:TYPE'],
-                     ],
+                     names=names,
                      engine='python',
                      *args,
                      **kwargs)
-    # DataFrame modify
-    center, _ = config_parse_freq(config[':FREQ:CENT'])
-    span, unit = config_parse_freq(config[':FREQ:SPAN'])
-    points = int(config[':SWE:POIN'])
+    # DataFrameをreadしたあとでindexを変更すると、データがないときにエラー
+    #
+    # => ValueError: Length mismatch: Expected axis has 0 elements,
+    # new values have 4001 elements
+    #
+    # が出てしまうので、NaNを詰めるようにreindex()する。
+    if len(df) < points:
+        df = df.reindex(index=range(points), columns=names)
+
+    # indexをconfigに合わせて変更
     df.index = np.linspace(
         center - span / 2,
         center + span / 2,
@@ -99,21 +112,17 @@ def read_trace(
     return Trace(df)
 
 
-def read_traces(*files, usecols=None, **kwargs):
+def read_traces(*files, usecols, **kwargs):
     """複数ファイルにread_trace()して1つのTraceにまとめる
 
     usecolsを指定しないとValueError
     ['AVER'], ['MINH'], ['MAXH']などを指定する。
     """
-    try:
-        df = pd.DataFrame({
-            datetime.datetime.strptime(Path(f).stem,
-                                       '%Y%m%d_%H%M%S'):  # basename
-            read_trace(f, usecols=usecols, *kwargs).squeeze()
-            for f in files
-        })
-    except ValueError:
-        raise ValueError('usecols=["AVER"] などを指定してください')
+    df = pd.DataFrame({
+        datetime.datetime.strptime(Path(f).stem, '%Y%m%d_%H%M%S'):  # basename
+        read_trace(f, usecols=usecols, *kwargs).squeeze()
+        for f in files
+    })
     return Trace(df)
 
 

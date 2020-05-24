@@ -211,8 +211,8 @@ class Watch:
 
                 files = glob.glob(f'{day}_*.txt')
                 if Watch.args.debug:
-                    print('l:', set(self.last_files[day]))
-                    print('f:', set(files))
+                    print('--LAST FILES-- ', set(self.last_files[day]))
+                    print('--FILES-- ', set(files))
 
                 # ファイルに更新がなければwaterfall_update.pngは出力しない
                 if set(self.last_files[day]) == set(files):
