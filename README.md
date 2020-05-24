@@ -10,14 +10,7 @@ $ git clone https://github.com/u1and0/SAtraceWatchdog.git
 or use docker
 
 ```
-$ docker run -d \
-             -v `pwd`/data:/data \
-             -v `pwd`/png:/png \
-             -v `pwd`/log:/log \
-             -v `pwd`/config:/usr/bin/SAtraceWatchdog/config \
-             u1and0/SAtraceWatchdog \
-             --directory /png \
-             --log-directory /log \
+$ docker pull u1and0/satracewatchdog:latest
 ```
 
 ## Usage
@@ -30,11 +23,25 @@ txt監視可視化ツール txtファイルとpngファイルの差分をチェ�
 optional arguments:
 -h, --help            show this help message and exit
 -d DIRECTORY, --directory DIRECTORY
-¦   ¦   ¦   ¦   ¦   出力ディレクトリ
+                    出力ディレクトリ
 -l LOGDIRECTORY, --logdirectory LOGDIRECTORY
-¦   ¦   ¦   ¦   ¦   ログファイル出力ディレクトリ
+                    ログファイル出力ディレクトリ
 --debug               debug機能有効化
 ```
+
+...or use docker
+
+```
+$ docker run -d \
+             -v `pwd`/data:/data \
+             -v `pwd`/png:/png \
+             -v `pwd`/log:/log \
+             -v `pwd`/config:/usr/bin/SAtraceWatchdog/config \
+             u1and0/SAtraceWatchdog \
+             --directory /png \
+             --log-directory /log \
+```
+
 
 ## Overview
 * txtファイルとpngファイルの差分をチェックして、グラフ化されていないファイルだけpng化します。
@@ -43,13 +50,14 @@ optional arguments:
 * ほとんどの通知をslackチャンネルに送信します。
 
 ## Update
-v0.2.4          [fix] no data error raise
-v0.2.3          [fix] slack.upload() -> slack.message()
-v0.2.2          no slack upload()
-v0.2.1          [mod] load config if configfile exist
-v0.2.0          一定時間更新がないとWarningを送信します
-v0.1.0          [fix] log output piped to slackbot
-v0.0.0          [merge] develop -> master
+* v0.2.5          [fix] `read_traces()` use `reindex()` if datafile has no data value
+* v0.2.4          [fix] no data error raise
+* v0.2.3          [fix] slack.upload() -> slack.message()
+* v0.2.2          no slack upload()
+* v0.2.1          [mod] load config if configfile exist
+* v0.2.0          一定時間更新がないとWarningを送信します
+* v0.1.0          [fix] log output piped to slackbot
+* v0.0.0          [merge] develop -> master
 
 
 
