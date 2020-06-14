@@ -63,6 +63,8 @@ $ docker run -d \
   * `marker`: マーカーをつける周波数リスト
   * `transfer_rate`: テキストファイル送信間隔(sec)
   * `usecols`: 使用する列名
+  * `cmaphigh`: カラーバーの最高値
+  * `cmaplow`: カラーバーの最低値
 
 ### ログ
 * logディレクトリに、監視開始日時の名前でログファイルを作成します。
@@ -83,6 +85,7 @@ $ docker run -d \
 
 
 ## Update
+* v0.3.0          [add] Output count report, Config color map high/low.
 * v0.2.6          [fix] default directory path
 * v0.2.5          [fix] `read_traces()` use `reindex()` if datafile has no data value
 * v0.2.4          [fix] no data error raise
