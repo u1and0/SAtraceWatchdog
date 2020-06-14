@@ -26,7 +26,7 @@ class Watch:
     parser.add_argument('-d',
                         '--directory',
                         help='出力ディレクトリ',
-                        default=Path.cwd())
+                        default=os.getcwd())
     parser.add_argument('-l',
                         '--logdirectory',
                         help='ログファイル出力ディレクトリ',
