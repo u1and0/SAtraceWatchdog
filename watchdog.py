@@ -85,6 +85,8 @@ class Watch:
             'marker',
             'transfer_rate',
             'usecols',
+            'cmaphigh',
+            'cmaplow',
         ]
         Config = namedtuple('Config', config_keys)
         authorized_config = Config(**{k: config_dict[k] for k in config_keys})
@@ -235,7 +237,9 @@ class Watch:
                 filename = self.filename_resolver(yyyymmdd=day,
                                                   number_of_files=len(files))
                 trss.heatmap(title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
-                             cmap='viridis')
+                             cmap='viridis',
+                             cmaphigh=self.config.cmaphigh,
+                             cmaplow=self.config.cmaplow)
                 plt.savefig(filename)
                 # ファイルに保存するときplt.close()しないと
                 # 複数プロットが1pngファイルに表示される
