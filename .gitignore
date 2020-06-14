@@ -1,5 +1,6 @@
 /data/
 /png/
+/log/
 tags
 /note/
 /config/*.json

@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 from SAtraceWatchdog import tracer
 from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
+from SAtraceWatchdog.report import timestamp_count
 
 
 class Watch:
@@ -167,11 +168,21 @@ class Watch:
             self.log.info(message)
             Watch.slackbot.message(message)
 
+        # ファイル名差分確認
         pattern = self.config.glob
         out = Watch.args.directory + '/'  # append directory last '/'
         txts = {Path(i).stem for i in glob.iglob(pattern + '.txt')}
         pngs = {Path(i).stem for i in glob.iglob(out + pattern + '.png')}
         update_files = txts - pngs
+
+        # Count report
+        _counts = timestamp_count(
+            (i[:8] for i in txts),  # 8 <= number of yyyymmdd
+            Watch.args.logdirectory / 'watchdog_summary.yaml')
+        if Watch.args.debug:
+            message = f'[DEBUG] FILE COUNTS {_counts}'
+            self.log.info(message)
+            Watch.slackbot.message(message=message)
 
         # ---
         # One file plot
