@@ -177,8 +177,8 @@ class Watch:
 
         # Count report
         _counts = timestamp_count(
-            (i[:8] for i in txts),  # 8 <= number of yyyymmdd
-            Watch.args.logdirectory / 'watchdog_summary.yaml')
+            timestamps=(i[:8] for i in txts),  # 8 <= number of yyyymmdd
+            filename=Watch.args.logdirectory / 'watchdog_summary.yaml')
         if Watch.args.debug:
             message = f'[DEBUG] FILE COUNTS {_counts}'
             self.log.info(message)
