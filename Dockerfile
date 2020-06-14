@@ -25,6 +25,7 @@ COPY oneplot.py /usr/bin/SAtraceWatchdog/
 COPY tracer.py /usr/bin/SAtraceWatchdog/
 COPY watchdog.py /usr/bin/SAtraceWatchdog/
 COPY slack.py /usr/bin/SAtraceWatchdog/
+COPY report.py /usr/bin/SAtraceWatchdog/
 RUN chmod -R +x /usr/bin/SAtraceWatchdog
 ENV PYTHONPATH="/usr/bin"
 ENTRYPOINT ["/usr/bin/SAtraceWatchdog/watchdog.py"]

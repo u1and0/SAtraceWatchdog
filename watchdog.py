@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 from SAtraceWatchdog import tracer
 from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
+from SAtraceWatchdog.report import timestamp_count
 
 
 class Watch:
@@ -84,6 +85,8 @@ class Watch:
             'marker',
             'transfer_rate',
             'usecols',
+            'cmaphigh',
+            'cmaplow',
         ]
         Config = namedtuple('Config', config_keys)
         authorized_config = Config(**{k: config_dict[k] for k in config_keys})
@@ -167,11 +170,21 @@ class Watch:
             self.log.info(message)
             Watch.slackbot.message(message)
 
+        # ファイル名差分確認
         pattern = self.config.glob
         out = Watch.args.directory + '/'  # append directory last '/'
         txts = {Path(i).stem for i in glob.iglob(pattern + '.txt')}
         pngs = {Path(i).stem for i in glob.iglob(out + pattern + '.png')}
         update_files = txts - pngs
+
+        # Count report
+        _counts = timestamp_count(
+            timestamps=(i[:8] for i in txts),  # 8 <= number of yyyymmdd
+            filename=Watch.args.logdirectory / 'watchdog_summary.yaml')
+        if Watch.args.debug:
+            message = f'[DEBUG] FILE COUNTS {_counts}'
+            self.log.info(message)
+            Watch.slackbot.message(message=message)
 
         # ---
         # One file plot
@@ -224,7 +237,9 @@ class Watch:
                 filename = self.filename_resolver(yyyymmdd=day,
                                                   number_of_files=len(files))
                 trss.heatmap(title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
-                             cmap='viridis')
+                             cmap='viridis',
+                             cmaphigh=self.config.cmaphigh,
+                             cmaplow=self.config.cmaplow)
                 plt.savefig(filename)
                 # ファイルに保存するときplt.close()しないと
                 # 複数プロットが1pngファイルに表示される

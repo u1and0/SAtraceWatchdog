@@ -49,7 +49,44 @@ $ docker run -d \
   * SAtraceWatchdogを再立ち上げする必要はありません。自動で反映されます。
 * ほとんどの通知をslackチャンネルに送信します。
 
+## Features
+### 入力ファイルと出力ファイル
+* 現在ディレクトリ(以下、txtディレクトリ)のtxtファイルを定期的に調べて、出力ディレクトリ(以下、pngディレクトリ)にpng形式のファイルを出力します。
+* txtディレクトリにあってpngディレクトリにないファイル名(拡張子は無視)を出力します。
+
+### 設定
+* 設定ファイルはconfig/config.jsonにまとめられています。
+  * `token`: slackトークン
+  * `channel_id`: slack チャンネルID
+  * `check_rate`: 確認間隔(sec)
+  * `glob`: テキストファイルを抜き出すglobパターン
+  * `marker`: マーカーをつける周波数リスト
+  * `transfer_rate`: テキストファイル送信間隔(sec)
+  * `usecols`: 使用する列名
+  * `cmaphigh`: カラーバーの最高値
+  * `cmaplow`: カラーバーの最低値
+
+### ログ
+* logディレクトリに、監視開始日時の名前でログファイルを作成します。
+> (例) `log/watchdog_200430_072050.log`
+* ログファイルには各通知、エラーメッセージなどが記録されます。
+> (例) `[INFO] watchdog   : 2020-06-14 22:04:21,559 画像の出力に成功しました ../png/waterfall_20151111_update.png`
+> (例) `[WARNING] watchdog   : 2020-06-14 22:04:22,005 データが抜けています DatetimeIndex(['2015-11-11 14:50:00'], dtype='datetime64[ns]', freq='5T')`
+
+### エラー通知
+* slack botを使用してエラーメッセージなどをslackへ通知します。
+* 設定ファイルはconfig/config.jsonを参照してください。
+
+### サマリー
+* logディレクトリに日にちごとのデータファイルカウントの結果を出力します。
+* ファイル名: `watchdog_summary.yaml`
+> (例) '20151111': 7, '20161108': 12
+> 2015年11月11日に7ファイル、2016年11月08日に12ファイルが出力されたことを示します。
+
+
 ## Update
+* v0.3.0          [add] Output count report, Config color map high/low.
+* v0.2.6          [fix] default directory path
 * v0.2.5          [fix] `read_traces()` use `reindex()` if datafile has no data value
 * v0.2.4          [fix] no data error raise
 * v0.2.3          [fix] slack.upload() -> slack.message()
