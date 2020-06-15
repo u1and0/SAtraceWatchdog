@@ -70,7 +70,7 @@ def plot_onefile(filename, directory=None, column='AVER'):
     select.plot_noisefloor()
     if directory:
         base = Path(filename).stem
-        plt.savefig(directory + '/' + base + '.png')
+        plt.savefig(f'{directory}/{base}.png')
         # ファイルに保存する時plt.close()しないと
         # 複数プロットが1pngファイルに表示される
         plt.close()  # reset plot
