@@ -23,11 +23,12 @@ from SAtraceWatchdog.report import timestamp_count
 class Watch:
     """watchdog class"""
     parser = argparse.ArgumentParser(description=__doc__)
+    # path操作関連の型はstr型ではなく、原則pathlib.PosixPath型を使用する
     root = Path(__file__).parent
     parser.add_argument('-d',
                         '--directory',
                         help='出力ディレクトリ',
-                        default=os.getcwd())
+                        default=Path.cwd())
     parser.add_argument('-l',
                         '--logdirectory',
                         help='ログファイル出力ディレクトリ',
@@ -44,11 +45,13 @@ class Watch:
         self.no_update_count = 0
         self.no_update_threshold = 1
         self.configfile = Watch.root / 'config/config.json'
-        self.config = None
-
+        self.config = None  # Watch.loop() の毎回のループでで読み込み
+        # direcroy, filepathの設定
+        Watch.args.directory = Watch.directory_check(Watch.args.directory)
+        Watch.args.logdirectory = Watch.directory_check(
+            Watch.args.logdirectory)
+        self.summary_file = Watch.args.logdirectory / 'watchdog_summary.yaml'
         # loggerの設定
-        Watch.directory_check(Watch.args.directory)
-        Watch.directory_check(Watch.args.logdirectory)
         Watch.set_logger()
         self.log = logging.getLogger(__name__)
 
@@ -71,6 +74,7 @@ class Watch:
         if not makedir.is_dir():  # 存在はするけれどもディレクトリ以外を指定されたらエラー
             message = f'{makedir.resolve()} はディレクトリではありません'
             raise IOError(message)
+        return makedir
 
     def load_config(self):
         """configの読み込み
@@ -172,15 +176,15 @@ class Watch:
 
         # ファイル名差分確認
         pattern = self.config.glob
-        out = Watch.args.directory + '/'  # append directory last '/'
-        txts = {Path(i).stem for i in glob.iglob(pattern + '.txt')}
-        pngs = {Path(i).stem for i in glob.iglob(out + pattern + '.png')}
+        out = Watch.args.directory
+        txts = {Path(i).stem for i in glob.iglob(f'{pattern}.txt')}
+        pngs = {Path(i).stem for i in glob.iglob(f'{out}/{pattern}.png')}
         update_files = txts - pngs
 
         # Count report
         _counts = timestamp_count(
             timestamps=(i[:8] for i in txts),  # 8 <= number of yyyymmdd
-            filename=Watch.args.logdirectory / 'watchdog_summary.yaml')
+            filename=self.summary_file)
         if Watch.args.debug:
             message = f'[DEBUG] FILE COUNTS {_counts}'
             self.log.info(message)
