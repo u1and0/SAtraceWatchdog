@@ -231,8 +231,14 @@ class Watch:
                     print('--LAST FILES-- ', set(self.last_files[day]))
                     print('--FILES-- ', set(files))
 
-                # ファイルに更新がなければwaterfall_update.pngは出力しない
-                if set(self.last_files[day]) == set(files):
+                # waterfall_update.pngが存在して、
+                # かつ
+                # ファイルに更新がなければ次のfor iterへ行く
+                noupdate = set(self.last_files[day]) == set(files)
+                exists = Path(
+                    f'{Watch.args.directory}/waterfall_{day}_update.png'
+                ).exists()
+                if exists and noupdate:
                     continue
 
                 # ファイルに更新があれば更新したwaterfall_update.pngを出力
