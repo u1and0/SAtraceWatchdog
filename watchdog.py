@@ -3,7 +3,6 @@
 txtファイルとpngファイルの差分をチェックして、グラフ化されていないファイルだけpng化します。
 """
 import sys
-import os
 import argparse
 from time import sleep
 import datetime
@@ -34,6 +33,7 @@ class Watch:
                         help='ログファイル出力ディレクトリ',
                         default=root / 'log')
     parser.add_argument('--debug', help='debug機能有効化', action='store_true')
+    parser.add_argument('-v', '--version', action='store_true')
     args = parser.parse_args()
     slackbot = Slack()
 
@@ -54,11 +54,6 @@ class Watch:
         # loggerの設定
         Watch.set_logger()
         self.log = logging.getLogger(__name__)
-
-        # logger, slackbotの設定
-        message = 'ディレクトリの監視を開始しました...'
-        self.log.info(message)
-        Watch.slackbot.message(message)
 
     @staticmethod
     def directory_check(directory):
@@ -131,30 +126,27 @@ class Watch:
         # ファイル用ハンドラをルートロガーに追加
         root_logger.addHandler(file_handler)
 
-    def filename_resolver(self, yyyymmdd, number_of_files):
+    @staticmethod
+    def filename_resolver(yyyymmdd: str, remove_flag: bool) -> str:
         """Decide waterfall filenamene
         return:
             waterfall_yymmdd_update.png
                 or
             waterfall_yymmdd.png
 
-        _update.pngが存在して、
-            かつ
         ファイル数が一日分=288ファイルあったら
             waterfall_{yyyymmdd}_update.pngを削除して、
-            waterfall_{yyyymmdd}.pngを保存する
+            waterfall_{yyyymmdd}.pngを返す
+        ファイル数が一日分=288ファイルなければ
+            waterfall_{yyyymmdd}_update.pngを返す
         """
-        filename = f'{Watch.args.directory}/waterfall_{yyyymmdd}_update.png'
-        # _update.pngが存在して、かつ
-        file_exist = Path(filename).exists()
-        # ファイル数が一日分=288ファイルあったら
-        number_of_files_in_a_day = DAY_SECOND / self.config.transfer_rate
-        number_of_files_ok = number_of_files >= number_of_files_in_a_day
-        if file_exist and number_of_files_ok:
+        pre = f'{Watch.args.directory}/waterfall_{yyyymmdd}'
+        filename = Path(pre + '_update.png')
+        if remove_flag:  # ファイル数が一日分=288ファイルあったら
             # waterfall_{yyyymmdd}_update.pngを削除して、
-            os.remove(filename)
+            filename.unlink(missing_ok=True)  # ignore FileNotFoundError
             # waterfall_{yyyymmdd}.pngというファイル名を返す
-            filename = f'{Watch.args.directory}/waterfall_{yyyymmdd}.png'
+            filename = Path(pre + '.png')
         return filename
 
     def loop(self):
@@ -228,8 +220,9 @@ class Watch:
 
                 files = glob.glob(f'{day}_*.txt')
                 if Watch.args.debug:
-                    print('--LAST FILES-- ', set(self.last_files[day]))
-                    print('--FILES-- ', set(files))
+                    print(f'{day}--LAST FILES-- ',
+                          len(set(self.last_files[day])))
+                    print(f'{day}--FILES-- ', len(set(files)))
 
                 # waterfall_update.pngが存在して、
                 # かつ
@@ -240,12 +233,17 @@ class Watch:
                 ).exists()
                 if exists and noupdate:
                     continue
+                self.last_files[day] = files
 
                 # ファイルに更新があれば更新したwaterfall_update.pngを出力
-                self.last_files[day] = files
                 trss = tracer.read_traces(*files, usecols=self.config.usecols)
+                _n = DAY_SECOND // self.config.transfer_rate  # => 288
+                num_of_files_ok = len(files) >= _n
+                if Watch.args.debug:
+                    print('limit:', _n)
+                    print('length: ', len(files))
                 filename = self.filename_resolver(yyyymmdd=day,
-                                                  number_of_files=len(files))
+                                                  remove_flag=num_of_files_ok)
                 trss.heatmap(title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
                              cmap='viridis',
                              cmaphigh=self.config.cmaphigh,
@@ -261,7 +259,8 @@ class Watch:
                 Watch.slackbot.message(message=message)
 
                 # データの抜けを検証"""
-                droped_data = Watch.guess_fallout(trss.T)
+                rate = '{}T'.format(self.config.transfer_rate // 60)
+                droped_data = trss.guess_fallout(rate=rate)
                 if any(droped_data):
                     message = f'データが抜けています {droped_data}'
                     self.log.warning(message)
@@ -281,34 +280,34 @@ class Watch:
         """更新がしばらくないときにWarning上げる"""
         no_uptime = self.no_update_count * self.config.transfer_rate
         if no_uptime < 60:
-            message = f'最後の更新から{no_uptime}秒間更新がありません。データの送信状況を確認してください。'
+            message = f'最後の更新から{no_uptime}秒'
         elif no_uptime < 3600:
-            message = f'最後の更新から{no_uptime//60}分間更新がありません。データの送信状況を確認してください。'
+            message = f'最後の更新から{no_uptime//60}分'
         else:
-            message = f'最後の更新から{no_uptime//3600}時間更新がありません。データの送信状況を確認してください。'
+            message = f'最後の更新から{no_uptime//3600}時'
+        message += '間更新がありません。データの送信状況を確認してください。'
         self.log.warning(message)
         Watch.slackbot.message(message)
 
-    @staticmethod
-    def guess_fallout(df):
-        """データ抜けの可能性があるDatetimeIndexを返す"""
-        resample = df.resample('5T').first()  # 5min resample
-        bools = resample.isna().any(1)  # NaN行をTrueにする
-        nan_idx = bools[bools].index  # Trueのとこのインデックスだけ抽出
-        return nan_idx
-
 
 def main():
-    """entry point"""
-    watchdog = Watch()
     """ファイル差分チェックを実行し、pngファイルを保存する
     Ctrl+Cで止めない限り続く
     """
+    watchdog = Watch()
+    if Watch.args.version:
+        print('SAtraceWatchdog ', VERSION)
+        return
+    # logger, slackbotの設定
+    message = f'ディレクトリの監視を開始しました。 SAtraceWatchdog {VERSION}'
+    watchdog.log.info(message)
+    Watch.slackbot.message(message)
     while True:
         watchdog.loop()
         watchdog.sleep()
 
 
 if __name__ == '__main__':
+    VERSION = 'v0.3.4'
     DAY_SECOND = 60 * 60 * 24
     main()

@@ -329,3 +329,10 @@ class Trace(pd.DataFrame):
         _min, _max = self.index.min(), self.index.max()
         ax = plt.plot([_min, _max], [line, line], 'k--', *args, **kwargs)
         return ax
+
+    def guess_fallout(self, rate: str):
+        """データ抜けの可能性があるDatetimeIndexを返す"""
+        resample = self.T.resample(rate).first()  # rate 300 = 5min resample
+        bools = resample.isna().any(1)  # NaN行をTrueにする
+        nan_idx = bools[bools].index  # Trueのとこのインデックスだけ抽出
+        return nan_idx
