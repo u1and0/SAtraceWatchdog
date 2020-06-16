@@ -220,8 +220,9 @@ class Watch:
 
                 files = glob.glob(f'{day}_*.txt')
                 if Watch.args.debug:
-                    print('--LAST FILES-- ', set(self.last_files[day]))
-                    print('--FILES-- ', set(files))
+                    print(f'{day}--LAST FILES-- ',
+                          len(set(self.last_files[day])))
+                    print(f'{day}--FILES-- ', len(set(files)))
 
                 # waterfall_update.pngが存在して、
                 # かつ
@@ -236,10 +237,13 @@ class Watch:
 
                 # ファイルに更新があれば更新したwaterfall_update.pngを出力
                 trss = tracer.read_traces(*files, usecols=self.config.usecols)
-                _n = DAY_SECOND // self.config.transfer_rate  # => 0~288
-                remove_flag = len(files) >= _n
+                _n = DAY_SECOND // self.config.transfer_rate  # => 288
+                num_of_files_ok = len(files) >= _n
+                if Watch.args.debug:
+                    print('limit:', _n)
+                    print('length: ', len(files))
                 filename = self.filename_resolver(yyyymmdd=day,
-                                                  remove_flag=remove_flag)
+                                                  remove_flag=num_of_files_ok)
                 trss.heatmap(title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
                              cmap='viridis',
                              cmaphigh=self.config.cmaphigh,
