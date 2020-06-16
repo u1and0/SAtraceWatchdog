@@ -261,7 +261,8 @@ class Watch:
                 Watch.slackbot.message(message=message)
 
                 # データの抜けを検証"""
-                droped_data = Watch.guess_fallout(trss.T)
+                rate = '{}T'.format(self.config.transfer_rate // 60)
+                droped_data = trss.guess_fallout(rate=rate)
                 if any(droped_data):
                     message = f'データが抜けています {droped_data}'
                     self.log.warning(message)
@@ -288,14 +289,6 @@ class Watch:
             message = f'最後の更新から{no_uptime//3600}時間更新がありません。データの送信状況を確認してください。'
         self.log.warning(message)
         Watch.slackbot.message(message)
-
-    @staticmethod
-    def guess_fallout(df):
-        """データ抜けの可能性があるDatetimeIndexを返す"""
-        resample = df.resample('5T').first()  # 5min resample
-        bools = resample.isna().any(1)  # NaN行をTrueにする
-        nan_idx = bools[bools].index  # Trueのとこのインデックスだけ抽出
-        return nan_idx
 
 
 def main():
