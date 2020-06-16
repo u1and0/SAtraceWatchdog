@@ -33,6 +33,7 @@ class Watch:
                         help='ログファイル出力ディレクトリ',
                         default=root / 'log')
     parser.add_argument('--debug', help='debug機能有効化', action='store_true')
+    parser.add_argument('-v', '--version', action='store_true')
     args = parser.parse_args()
     slackbot = Slack()
 
@@ -53,11 +54,6 @@ class Watch:
         # loggerの設定
         Watch.set_logger()
         self.log = logging.getLogger(__name__)
-
-        # logger, slackbotの設定
-        message = 'ディレクトリの監視を開始しました...'
-        self.log.info(message)
-        Watch.slackbot.message(message)
 
     @staticmethod
     def directory_check(directory):
@@ -280,11 +276,12 @@ class Watch:
         """更新がしばらくないときにWarning上げる"""
         no_uptime = self.no_update_count * self.config.transfer_rate
         if no_uptime < 60:
-            message = f'最後の更新から{no_uptime}秒間更新がありません。データの送信状況を確認してください。'
+            message = f'最後の更新から{no_uptime}秒'
         elif no_uptime < 3600:
-            message = f'最後の更新から{no_uptime//60}分間更新がありません。データの送信状況を確認してください。'
+            message = f'最後の更新から{no_uptime//60}分'
         else:
-            message = f'最後の更新から{no_uptime//3600}時間更新がありません。データの送信状況を確認してください。'
+            message = f'最後の更新から{no_uptime//3600}時'
+        message += '間更新がありません。データの送信状況を確認してください。'
         self.log.warning(message)
         Watch.slackbot.message(message)
 
@@ -294,11 +291,19 @@ def main():
     Ctrl+Cで止めない限り続く
     """
     watchdog = Watch()
+    if Watch.args.version:
+        print('SAtraceWatchdog ', VERSION)
+        return
+    # logger, slackbotの設定
+    message = f'ディレクトリの監視を開始しました。 SAtraceWatchdog {VERSION}'
+    watchdog.log.info(message)
+    Watch.slackbot.message(message)
     while True:
         watchdog.loop()
         watchdog.sleep()
 
 
 if __name__ == '__main__':
+    VERSION = 'v0.3.4'
     DAY_SECOND = 60 * 60 * 24
     main()
