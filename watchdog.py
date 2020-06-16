@@ -131,30 +131,26 @@ class Watch:
         # ファイル用ハンドラをルートロガーに追加
         root_logger.addHandler(file_handler)
 
-    def filename_resolver(self, yyyymmdd, number_of_files):
+    def filename_resolver(self, yyyymmdd: str, remove_flag: bool) -> str:
         """Decide waterfall filenamene
         return:
             waterfall_yymmdd_update.png
                 or
             waterfall_yymmdd.png
 
-        _update.pngが存在して、
-            かつ
         ファイル数が一日分=288ファイルあったら
             waterfall_{yyyymmdd}_update.pngを削除して、
-            waterfall_{yyyymmdd}.pngを保存する
+            waterfall_{yyyymmdd}.pngを返す
+        ファイル数が一日分=288ファイルなければ
+            waterfall_{yyyymmdd}_update.pngを返す
         """
-        filename = f'{Watch.args.directory}/waterfall_{yyyymmdd}_update.png'
-        # _update.pngが存在して、かつ
-        file_exist = Path(filename).exists()
-        # ファイル数が一日分=288ファイルあったら
-        number_of_files_in_a_day = DAY_SECOND / self.config.transfer_rate
-        number_of_files_ok = number_of_files >= number_of_files_in_a_day
-        if file_exist and number_of_files_ok:
+        pre = f'{Watch.args.directory}/waterfall_{yyyymmdd}'
+        filename = Path(pre + '_update.png')
+        if remove_flag:  # ファイル数が一日分=288ファイルあったら
             # waterfall_{yyyymmdd}_update.pngを削除して、
-            os.remove(filename)
+            filename.unlink(missing_ok=True)  # ignore FileNotFoundError
             # waterfall_{yyyymmdd}.pngというファイル名を返す
-            filename = f'{Watch.args.directory}/waterfall_{yyyymmdd}.png'
+            filename = Path(pre + '.png')
         return filename
 
     def loop(self):
@@ -240,12 +236,15 @@ class Watch:
                 ).exists()
                 if exists and noupdate:
                     continue
+                else:
+                    self.last_files[day] = files
 
                 # ファイルに更新があれば更新したwaterfall_update.pngを出力
-                self.last_files[day] = files
                 trss = tracer.read_traces(*files, usecols=self.config.usecols)
+                _n = DAY_SECOND // self.config.transfer_rate  # => 0~288
+                remove_flag = len(files) >= _n
                 filename = self.filename_resolver(yyyymmdd=day,
-                                                  number_of_files=len(files))
+                                                  remove_flag=remove_flag)
                 trss.heatmap(title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
                              cmap='viridis',
                              cmaphigh=self.config.cmaphigh,
