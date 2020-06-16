@@ -3,7 +3,6 @@
 txtファイルとpngファイルの差分をチェックして、グラフ化されていないファイルだけpng化します。
 """
 import sys
-import os
 import argparse
 from time import sleep
 import datetime
@@ -131,7 +130,8 @@ class Watch:
         # ファイル用ハンドラをルートロガーに追加
         root_logger.addHandler(file_handler)
 
-    def filename_resolver(self, yyyymmdd: str, remove_flag: bool) -> str:
+    @staticmethod
+    def filename_resolver(yyyymmdd: str, remove_flag: bool) -> str:
         """Decide waterfall filenamene
         return:
             waterfall_yymmdd_update.png
@@ -236,8 +236,7 @@ class Watch:
                 ).exists()
                 if exists and noupdate:
                     continue
-                else:
-                    self.last_files[day] = files
+                self.last_files[day] = files
 
                 # ファイルに更新があれば更新したwaterfall_update.pngを出力
                 trss = tracer.read_traces(*files, usecols=self.config.usecols)
@@ -291,11 +290,10 @@ class Watch:
 
 
 def main():
-    """entry point"""
-    watchdog = Watch()
     """ファイル差分チェックを実行し、pngファイルを保存する
     Ctrl+Cで止めない限り続く
     """
+    watchdog = Watch()
     while True:
         watchdog.loop()
         watchdog.sleep()
