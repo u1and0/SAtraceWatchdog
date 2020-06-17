@@ -200,6 +200,25 @@ class Trace(pd.DataFrame):
         """
         return self.apply(lambda x: stats.scoreatpercentile(x, percent), axis)
 
+    def bandsignal(self, center, span, axis=0):
+        """centerから±spanのindexに対しての平均を返す
+
+        >>> np.random.seed(3)
+        >>> aa = np.random.randint(0, 100, 10)
+        >>> aa
+        array([24,  3, 56, 72,  0, 21, 19, 74, 41, 10])
+
+        >>> index = np.linspace(0.1, 1, 10)
+        >>> index
+        array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1. ])
+
+        >>> trss = Trace(pd.Series(aa, index=index))
+        >>> trss.bandsignal(center=0.5, span=0.1)
+        """
+        df = Trace(self.loc[center - span:center + span])
+        mean = df.db2mw().mean()
+        return mw2db(mean)
+
     def heatmap(self,
                 title,
                 xlabel='Frequency[kHz]',
@@ -284,38 +303,6 @@ class Trace(pd.DataFrame):
         plt.subplots_adjust(hspace=0)  # グラフ間の隙間なし
         return ax
 
-    def mw2db(self):
-        """mW -> dB
-        Usage: `df.mw2db()` or `mw2db(df)`
-
-        ```python:TEST
-        mw = pd.Series(np.arange(11))
-        df = pd.DataFrame({'watt': mw, 'dBm': mw.mw2db(),
-                          'dB to watt': mw.mw2db().db2mw()})
-        ```
-        print(df)
-        # [Out]#     dB to watt        dBm  watt
-        # [Out]# 0          0.0       -inf     0
-        # [Out]# 1          1.0   0.000000     1
-        # [Out]# 2          2.0   3.010300     2
-        # [Out]# 3          3.0   4.771213     3
-        # [Out]# 4          4.0   6.020600     4
-        # [Out]# 5          5.0   6.989700     5
-        # [Out]# 6          6.0   7.781513     6
-        # [Out]# 7          7.0   8.450980     7
-        # [Out]# 8          8.0   9.030900     8
-        # [Out]# 9          9.0   9.542425     9
-        # [Out]# 10        10.0  10.000000    10
-        ```
-        """
-        return Trace(10 * np.log10(self))
-
-    def db2mw(self):
-        """dB -> mW
-        Usage: `df.db2mw()` or `db2mw(df)`
-        """
-        return Trace(np.power(10, self / 10))
-
     def plot_markers(self, *args, **kwargs):
         """marker plot as Diamond"""
         slices = self.squeeze().reindex(self.marker).loc[self.marker]
@@ -336,3 +323,53 @@ class Trace(pd.DataFrame):
         bools = resample.isna().any(1)  # NaN行をTrueにする
         nan_idx = bools[bools].index  # Trueのとこのインデックスだけ抽出
         return nan_idx
+
+
+def db2mw(a):
+    """dB -> mW
+    Usage: `df.db2mw()` or `db2mw(df)`
+    """
+    return np.power(10, a / 10)
+
+
+def mw2db(a):
+    """mW -> dB
+    Usage: `df.mw2db()` or `mw2db(df)`
+
+    ```python:TEST
+    mw = pd.Series(np.arange(11))
+    df = pd.DataFrame({'watt': mw, 'dBm': mw.mw2db(),
+                      'dB to watt': mw.mw2db().db2mw()})
+    ```
+    print(df)
+    # [Out]#     dB to watt        dBm  watt
+    # [Out]# 0          0.0       -inf     0
+    # [Out]# 1          1.0   0.000000     1
+    # [Out]# 2          2.0   3.010300     2
+    # [Out]# 3          3.0   4.771213     3
+    # [Out]# 4          4.0   6.020600     4
+    # [Out]# 5          5.0   6.989700     5
+    # [Out]# 6          6.0   7.781513     6
+    # [Out]# 7          7.0   8.450980     7
+    # [Out]# 8          8.0   9.030900     8
+    # [Out]# 9          9.0   9.542425     9
+    # [Out]# 10        10.0  10.000000    10
+    ```
+    """
+    return 10 * np.log10(a)
+
+
+# import tracer
+#    either
+# tracer.db2mw(df)
+#    or
+# df.db2mw()
+# will be ok
+setattr(pd.Series, 'db2mw', db2mw)
+setattr(pd.DataFrame, 'db2mw', db2mw)
+setattr(pd.Series, 'mw2db', mw2db)
+setattr(pd.DataFrame, 'mw2db', mw2db)
+
+if __name__ == '__main__':
+    import doctest
+    doctest.testmod()
