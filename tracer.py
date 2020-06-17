@@ -200,7 +200,13 @@ class Trace(pd.DataFrame):
         """
         return self.apply(lambda x: stats.scoreatpercentile(x, percent), axis)
 
-    def bandsignal(self, center, span, axis=0):
+    def db2mw(self):
+        return Trace(db2mw(self))
+
+    def mw2db(self):
+        return Trace(mw2db(self))
+
+    def bandsignal(self, center, span):
         """centerから±spanのindexに対しての平均を返す
 
         >>> np.random.seed(3)
@@ -212,12 +218,36 @@ class Trace(pd.DataFrame):
         >>> index
         array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1. ])
 
-        >>> trss = Trace(pd.Series(aa, index=index))
-        >>> trss.bandsignal(center=0.5, span=0.1)
+        >>> sr = pd.Series(aa, index=index, name='a')
+        >>> trs = Trace(sr)
+        >>> trs.bandsignal(center=0.5, span=0.1)
+        a    67.228822
+        dtype: float64
+
+        >>> np.random.seed(3)
+        >>> aa = np.random.randint(0, 100, 30).reshape(10, -1)
+        >>> df = pd.DataFrame(aa, index=index, columns=list('abc'))
+        >>> trs = Trace(df)
+        >>> trs
+              a   b   c
+        0.1  24   3  56
+        0.2  72   0  21
+        0.3  19  74  41
+        0.4  10  21  38
+        0.5  96  20  44
+        0.6  93  39  14
+        0.7  26  81  90
+        0.8  22  66   2
+        0.9  63  60   1
+        1.0  51  90  69
+        >>> trs.bandsignal(center=0.5, span=0.1)
+        a    92.993136
+        b    34.350569
+        c    40.205485
+        dtype: float64
         """
-        df = Trace(self.loc[center - span:center + span])
-        mean = df.db2mw().mean()
-        return mw2db(mean)
+        df = self.loc[center - span:center + span]
+        return df.db2mw().mean().mw2db()
 
     def heatmap(self,
                 title,
@@ -328,6 +358,13 @@ class Trace(pd.DataFrame):
 def db2mw(a):
     """dB -> mW
     Usage: `df.db2mw()` or `db2mw(df)`
+
+    >>> db2mw(0)
+    1.0
+    >>> db2mw(10)
+    10.0
+    >>> np.apply_along_axis(db2mw, 0, np.array([0,3,6,10]))
+    array([ 1.        ,  1.99526231,  3.98107171, 10.        ])
     """
     return np.power(10, a / 10)
 
@@ -336,25 +373,22 @@ def mw2db(a):
     """mW -> dB
     Usage: `df.mw2db()` or `mw2db(df)`
 
-    ```python:TEST
-    mw = pd.Series(np.arange(11))
-    df = pd.DataFrame({'watt': mw, 'dBm': mw.mw2db(),
+    >>> mw = pd.Series(np.arange(11))
+    >>> df = pd.DataFrame({'watt': mw, 'dBm': mw.mw2db(),\
                       'dB to watt': mw.mw2db().db2mw()})
-    ```
-    print(df)
-    # [Out]#     dB to watt        dBm  watt
-    # [Out]# 0          0.0       -inf     0
-    # [Out]# 1          1.0   0.000000     1
-    # [Out]# 2          2.0   3.010300     2
-    # [Out]# 3          3.0   4.771213     3
-    # [Out]# 4          4.0   6.020600     4
-    # [Out]# 5          5.0   6.989700     5
-    # [Out]# 6          6.0   7.781513     6
-    # [Out]# 7          7.0   8.450980     7
-    # [Out]# 8          8.0   9.030900     8
-    # [Out]# 9          9.0   9.542425     9
-    # [Out]# 10        10.0  10.000000    10
-    ```
+    >>> df
+        watt        dBm  dB to watt
+    0      0       -inf         0.0
+    1      1   0.000000         1.0
+    2      2   3.010300         2.0
+    3      3   4.771213         3.0
+    4      4   6.020600         4.0
+    5      5   6.989700         5.0
+    6      6   7.781513         6.0
+    7      7   8.450980         7.0
+    8      8   9.030900         8.0
+    9      9   9.542425         9.0
+    10    10  10.000000        10.0
     """
     return 10 * np.log10(a)
 
