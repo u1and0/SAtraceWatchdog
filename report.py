@@ -29,7 +29,7 @@ def timestamp_count(timestamps, filename):
     return count
 
 
-def snreport(reportfile):
+def snreport(reportfile, center, span):
     reportfile = Path(reportfile)
     a = set(Path(i).stem for i in iglob('*.txt'))
     if reportfile.exists():
@@ -40,14 +40,13 @@ def snreport(reportfile):
         bdf = pd.DataFrame()
         new_idx = a
     trss = tracer.read_traces(*(f'{i}.txt' for i in new_idx), usecols='AVER')
-    trss = tracer.Trace(trss.sort_index())
-    n = trss.noisefloor(axis=1)
-    center, span = 54, 0.5
+    # trst = tracer.Trace(trss.sort_index().T)
+    n = trss.noisefloor(axis=0)
     s = trss.bandsignal(center, span)
     adf = pd.DataFrame({f'{center}±{span} signal': s, 'noisefloor': n})
     cdf = pd.concat([bdf, adf]).sort_index()
     cdf.to_csv(reportfile)
-    return trss
+    return cdf
 
 
 if __name__ == '__main__':
