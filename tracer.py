@@ -240,6 +240,7 @@ class Trace(pd.DataFrame):
         0.8  22  66   2
         0.9  63  60   1
         1.0  51  90  69
+        >>> # return means at index 0.4~0.6
         >>> trs.bandsignal(center=0.5, span=0.1)
         a    92.993136
         b    34.350569

@@ -29,24 +29,53 @@ def timestamp_count(timestamps, filename):
     return count
 
 
-def snreport(reportfile, center, span):
-    reportfile = Path(reportfile)
-    a = set(Path(i).stem for i in iglob('*.txt'))
-    if reportfile.exists():
-        bdf = pd.read_csv(reportfile)
-        b = set(datetime.strptime('%y%m%d'))
-        new_idx = a - b
-    else:
-        bdf = pd.DataFrame()
-        new_idx = a
-    trss = tracer.read_traces(*(f'{i}.txt' for i in new_idx), usecols='AVER')
-    # trst = tracer.Trace(trss.sort_index().T)
-    n = trss.noisefloor(axis=0)
-    s = trss.bandsignal(center, span)
-    adf = pd.DataFrame({f'{center}±{span} signal': s, 'noisefloor': n})
-    cdf = pd.concat([bdf, adf]).sort_index()
-    cdf.to_csv(reportfile)
-    return cdf
+def newindex(reportfile, fileset: set):
+    """古いreportfile内のdatetimeインデックスから
+    現在のファイルセットから解析済みファイルセットを差し引いた
+    ファイルセットを返す
+    """
+    fileset = {i + '.txt' for i in fileset}
+    if Path(reportfile).exists():
+        # indexのみ必要
+        # あとでstrftime()するためにparse_dateオプションあり
+        idx = pd.read_csv(reportfile, usecols=[0], parse_dates=[0]).squeeze()
+        old_fileset = {i.strftime('%Y%m%d_%H%M%S') + '.txt' for i in idx}
+        fileset -= old_fileset
+    return fileset
+
+
+def sntable(filenameset: set, centers: list, span: float):
+    """ centers周りのbandsignal平均値を返す
+    """
+    trss = tracer.read_traces(*filenameset, usecols='AVER')
+    df = pd.DataFrame(
+        {f'{i}pm{span} signal': trss.bandsignal(i, span)
+         for i in centers})
+    df['noisefloor'] = trss.noisefloor(axis=0)
+    return df
+
+    # watchdog.py に書く
+    # cdf = pd.concat([bdf, adf]).sort_index()
+    # cdf.to_csv(reportfile)
+    """
+    ```python:return bandsignal()
+    def sntable(self, center, span):
+        usage:
+        trss = read_traces(*filenames, usecols='AVER')
+        trss.sntable(22, 0.2)
+
+        # trss = read_traces(*(f'{i}.txt' for i in new_idx), usecols='AVER')
+        # trst = tracer.Trace(trss.sort_index().T)
+        _n = trss.noisefloor(axis=0)
+        _s = trss.bandsignal(center, span)
+    !   return pd.DataFrame({f'{center}±{span} signal': _s, 'noisefloor': _n})
+        # return cdf
+
+    trss = read_traces(*files, 'AVER')
+    ! df = pd.DataFrame({f'signal {i}pm0.2':trss.bandsignal(i, 0.2) for i in [22, 23, 24]})
+    ! df['noisefloor'] = trss.noisefloor(axis=0)
+    ```
+    """
 
 
 if __name__ == '__main__':

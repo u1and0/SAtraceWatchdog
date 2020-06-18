@@ -13,10 +13,11 @@ from logging import handlers
 from pathlib import Path
 from collections import namedtuple, defaultdict
 import matplotlib.pyplot as plt
+import pandas as pd
 from SAtraceWatchdog import tracer
 from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
-from SAtraceWatchdog.report import timestamp_count
+from SAtraceWatchdog import report
 
 
 class Watch:
@@ -174,13 +175,30 @@ class Watch:
         update_files = txts - pngs
 
         # Count report
-        _counts = timestamp_count(
+        _counts = report.timestamp_count(
             timestamps=(i[:8] for i in txts),  # 8 <= number of yyyymmdd
             filename=self.summary_file)
         if Watch.args.debug:
             message = f'[DEBUG] FILE COUNTS {_counts}'
             self.log.info(message)
             Watch.slackbot.message(message=message)
+
+        # SN report
+        filename = Watch.args.logdirectory / 'SN.csv'
+        new_fileset = report.newindex(filename, txts)
+        sndf = report.sntable(new_fileset,
+                              centers=self.config.marker,
+                              span=0.2)
+        if filename.exists():
+            sndf = pd.concat([  # Concat [old_index, new_index]
+                pd.read_csv(filename, index_col=0, parse_dates=True),
+                sndf,
+            ])
+        sndf.sort_index(replace=True)
+        sndf.to_csv(filename)  # Save file
+        message = 'S/N レポート{filename}を出力しました'
+        self.log.info(message)
+        Watch.slackbot.message(message=message)
 
         # ---
         # One file plot
