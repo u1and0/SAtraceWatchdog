@@ -52,6 +52,7 @@ class Watch:
         Watch.args.logdirectory = Watch.directory_check(
             Watch.args.logdirectory)
         self.summary_file = Watch.args.logdirectory / 'watchdog_summary.yaml'
+        self.stats_file = Watch.args.logdirectory / 'SN.csv'
         # loggerの設定
         Watch.set_logger()
         self.log = logging.getLogger(__name__)
@@ -184,21 +185,28 @@ class Watch:
             Watch.slackbot.message(message=message)
 
         # SN report
-        filename = Watch.args.logdirectory / 'SN.csv'
-        new_fileset = report.newindex(filename, txts)
-        sndf = report.sntable(new_fileset,
-                              centers=self.config.marker,
-                              span=0.2)
-        if filename.exists():
-            sndf = pd.concat([  # Concat [old_index, new_index]
-                pd.read_csv(filename, index_col=0, parse_dates=True),
-                sndf,
-            ])
-        sndf.sort_index(replace=True)
-        sndf.to_csv(filename)  # Save file
-        message = 'S/N レポート{filename}を出力しました'
-        self.log.info(message)
-        Watch.slackbot.message(message=message)
+        new_fileset = {
+            i + '.txt'
+            for i in report.newindex(self.stats_file, txts)
+        }
+        if new_fileset:
+            trs = tracer.read_traces(*new_fileset, usecols=self.config.usecols)
+            sndf = trs.sntable(centers=self.config.marker, span=0.2)
+            if self.stats_file.exists():
+                sndf = pd.concat([  # Concat [old_index, new_index]
+                    pd.read_csv(self.stats_file, index_col=0,
+                                parse_dates=True),
+                    sndf,
+                ])
+            sndf.sort_index(inplace=True)
+            if Watch.args.debug:
+                message = '[DEBUG] Print S/N report'
+                self.log.debug(message, sndf)
+                Watch.slackbot.message(message=message)
+            sndf.to_csv(self.stats_file)  # Save file
+            message = f'S/N レポート{self.stats_file}を出力しました'
+            self.log.info(message)
+            Watch.slackbot.message(message=message)
 
         # ---
         # One file plot
@@ -208,8 +216,6 @@ class Watch:
             for base in update_files:
                 plot_onefile(base + '.txt', directory=Watch.args.directory)
                 message = f'画像の出力に成功しました {Watch.args.directory}/{base}.png'
-                if Watch.args.debug:
-                    message = '[DEBUG] ' + message
                 self.log.info(message)
                 Watch.slackbot.message(message=message)
                 # Reset count

@@ -4,9 +4,9 @@ import datetime
 import json
 from pathlib import Path
 import numpy as np
-from scipy import stats
 import seaborn as sns
 import pandas as pd
+from pandas.compat.numpy import function as nv
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
 from matplotlib.pylab import yticks
@@ -118,12 +118,11 @@ def read_traces(*files, usecols, **kwargs):
     usecolsを指定しないとValueError
     ['AVER'], ['MINH'], ['MAXH']などを指定する。
     """
-    df = pd.DataFrame({
+    return Trace({
         datetime.datetime.strptime(Path(f).stem, '%Y%m%d_%H%M%S'):  # basename
         read_trace(f, usecols=usecols, *kwargs).squeeze()
         for f in files
     })
-    return Trace(df)
 
 
 def title_renamer(filename: str) -> str:
@@ -188,17 +187,20 @@ class Trace(pd.DataFrame):
             Trace.marker = _config['marker']
             Trace.marker.sort()
 
-    def noisefloor(self, axis: int = 0, percent: float = 25):
-        """ 1/4 medianをノイズフロアとし、各列に適用して返す
-        引数:
-            df: 行が周波数、列が日時(データフレーム型)
-            axis: 0 or 1.
-                0: 列に適用(デフォルト)
-                1: 行に適用
-        戻り値:
-            df: ノイズフロア(データフレーム型)
-        """
-        return self.apply(lambda x: stats.scoreatpercentile(x, percent), axis)
+    def transpose(self, *args, **kwargs):
+        nv.validate_transpose(args, kwargs)
+        return self
+
+    T = property(
+        transpose,
+        doc="""
+        Return the transpose, which is by definition self.
+        """,
+    )
+
+    def noisefloor(self, *args, **kwargs):
+        """ 1/4 quantileをノイズフロアとし、各列に適用して返す"""
+        return self.quantile(0.25, *args, **kwargs)
 
     def bandsignal(self, center, span):
         """centerから±spanのindexに対してのデシベル平均を返す
@@ -225,8 +227,16 @@ class Trace(pd.DataFrame):
         dtype: float64
         >>> # RuntimeWarning: divide by zero encountered in log10
         """
-        df = self.loc[center - span:center + span]
+        df = self.reindex(self.marker).loc[center - span:center + span]
         return df.db2mw().mean().mw2db()
+
+    def sntable(self, centers: list, span: float):
+        """ centers周りのbandsignal平均値とnoisefloorのテーブルを返す """
+        df = pd.DataFrame(
+            {f'{i}±{span} signal': self.bandsignal(i, span)
+             for i in centers})
+        df['noisefloor'] = self.noisefloor()
+        return df
 
     def heatmap(self,
                 title,
@@ -276,8 +286,7 @@ class Trace(pd.DataFrame):
         ax.xaxis.set_ticks_position('top')  # xラベル上にする
 
         # __MAKE WATERFALL DATA________________
-        dfk = self.T.resample('5T').first()  # 隙間埋める
-        # dfk = df.db2mw().resample('5T').mean().mw2db()  # 隙間埋める
+        dfk = self.resample('5T').first()  # 隙間埋める
         dfk = dfk.reindex(pd.date_range(title, freq='5T',
                                         periods=288))  # 最初/最後埋め
         dfk.index = np.arange(len(dfk))  # 縦軸はdatetime index描画できないのでintにする

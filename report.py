@@ -34,25 +34,22 @@ def newindex(reportfile, fileset: set):
     現在のファイルセットから解析済みファイルセットを差し引いた
     ファイルセットを返す
     """
-    fileset = {i + '.txt' for i in fileset}
     if Path(reportfile).exists():
         # indexのみ必要
         # あとでstrftime()するためにparse_dateオプションあり
         idx = pd.read_csv(reportfile, usecols=[0], parse_dates=[0]).squeeze()
-        old_fileset = {i.strftime('%Y%m%d_%H%M%S') + '.txt' for i in idx}
+        old_fileset = {i.strftime('%Y%m%d_%H%M%S') for i in idx}
         fileset -= old_fileset
     return fileset
 
-
-def sntable(filenameset: set, centers: list, span: float):
-    """ centers周りのbandsignal平均値を返す
-    """
-    trss = tracer.read_traces(*filenameset, usecols='AVER')
-    df = pd.DataFrame(
-        {f'{i}±{span} signal': trss.bandsignal(i, span)
-         for i in centers})
-    df['noisefloor'] = trss.noisefloor(axis=0)
-    return df
+    # def sntable(filenameset: set, centers: list, span: float):
+    #     """ centers周りのbandsignal平均値を返す """
+    #     trss = tracer.read_traces(*filenameset, usecols='AVER')
+    #     df = pd.DataFrame(
+    #         {f'{i}±{span} signal': trss.bandsignal(i, span)
+    #          for i in centers})
+    #     df['noisefloor'] = trss.noisefloor()
+    #     return df
 
     # watchdog.py に書く
     # cdf = pd.concat([bdf, adf]).sort_index()
