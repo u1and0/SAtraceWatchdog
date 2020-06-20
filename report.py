@@ -49,7 +49,7 @@ def sntable(filenameset: set, centers: list, span: float):
     """
     trss = tracer.read_traces(*filenameset, usecols='AVER')
     df = pd.DataFrame(
-        {f'{i}pm{span} signal': trss.bandsignal(i, span)
+        {f'{i}±{span} signal': trss.bandsignal(i, span)
          for i in centers})
     df['noisefloor'] = trss.noisefloor(axis=0)
     return df

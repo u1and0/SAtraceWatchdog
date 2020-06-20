@@ -180,8 +180,8 @@ class Trace(pd.DataFrame):
     _configfile = _dirname / 'config/config.json'
     marker = []
 
-    def __init__(self, dataframe):
-        super().__init__(dataframe)
+    def __init__(self, *args, **kwargs):
+        super().__init__(pd.DataFrame(*args, **kwargs))
         if Path(Trace._configfile).exists():
             with open(Trace._configfile, 'r') as f:
                 _config = json.load(f)
@@ -207,45 +207,29 @@ class Trace(pd.DataFrame):
         return Trace(mw2db(self))
 
     def bandsignal(self, center, span):
-        """centerから±spanのindexに対しての平均を返す
-
-        >>> np.random.seed(3)
-        >>> aa = np.random.randint(0, 100, 10)
-        >>> aa
-        array([24,  3, 56, 72,  0, 21, 19, 74, 41, 10])
-
+        """centerから±spanのindexに対してのデシベル平均を返す
+        >>> aa = np.arange(1, 31).reshape(3, -1).T
         >>> index = np.linspace(0.1, 1, 10)
-        >>> index
-        array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1. ])
-
-        >>> sr = pd.Series(aa, index=index, name='a')
-        >>> trs = Trace(sr)
-        >>> trs.bandsignal(center=0.5, span=0.1)
-        a    67.228822
-        dtype: float64
-
-        >>> np.random.seed(3)
-        >>> aa = np.random.randint(0, 100, 30).reshape(10, -1)
-        >>> df = pd.DataFrame(aa, index=index, columns=list('abc'))
-        >>> trs = Trace(df)
+        >>> trs = Trace(aa, index=index, colomns=list('abc'))
         >>> trs
               a   b   c
-        0.1  24   3  56
-        0.2  72   0  21
-        0.3  19  74  41
-        0.4  10  21  38
-        0.5  96  20  44
-        0.6  93  39  14
-        0.7  26  81  90
-        0.8  22  66   2
-        0.9  63  60   1
-        1.0  51  90  69
-        >>> # return means at index 0.4~0.6
+        0.1   1  11  21
+        0.2   2  12  22
+        0.3   3  13  23
+        0.4   4  14  24
+        0.5   5  15  25
+        0.6   6  16  26
+        0.7   7  17  27
+        0.8   8  18  28
+        0.9   9  19  29
+        1.0  10  20  30
+        >>> # trs.bandsignal returns dB mean of index 0.4~0.6
         >>> trs.bandsignal(center=0.5, span=0.1)
-        a    92.993136
-        b    34.350569
-        c    40.205485
+        a     6.410678
+        b    16.410678
+        c    26.410678
         dtype: float64
+        >>> # RuntimeWarning: divide by zero encountered in log10
         """
         df = self.loc[center - span:center + span]
         return df.db2mw().mean().mw2db()
