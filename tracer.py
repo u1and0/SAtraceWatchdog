@@ -200,12 +200,6 @@ class Trace(pd.DataFrame):
         """
         return self.apply(lambda x: stats.scoreatpercentile(x, percent), axis)
 
-    def db2mw(self):
-        return Trace(db2mw(self))
-
-    def mw2db(self):
-        return Trace(mw2db(self))
-
     def bandsignal(self, center, span):
         """centerから±spanのindexに対してのデシベル平均を返す
         >>> aa = np.arange(1, 31).reshape(3, -1).T
@@ -343,7 +337,6 @@ class Trace(pd.DataFrame):
 def db2mw(a):
     """dB -> mW
     Usage: `df.db2mw()` or `db2mw(df)`
-
     >>> db2mw(0)
     1.0
     >>> db2mw(10)
@@ -357,7 +350,6 @@ def db2mw(a):
 def mw2db(a):
     """mW -> dB
     Usage: `df.mw2db()` or `mw2db(df)`
-
     >>> mw = pd.Series(np.arange(11))
     >>> df = pd.DataFrame({'watt': mw, 'dBm': mw.mw2db(),\
                       'dB to watt': mw.mw2db().db2mw()})
