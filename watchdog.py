@@ -321,14 +321,15 @@ def main():
     watchdog = Watch()
     if Watch.args.version:
         print('SAtraceWatchdog ', VERSION)
-        return
-    # logger, slackbotの設定
-    message = f'ディレクトリの監視を開始しました。 SAtraceWatchdog {VERSION}'
-    watchdog.log.info(message)
-    Watch.slackbot.message(message)
-    while True:
-        watchdog.loop()
-        watchdog.sleep()
+        return  # VERSION を表示して終了
+    Slack().log(watchdog.log.info,
+                f'ディレクトリの監視を開始しました。 SAtraceWatchdog {VERSION}')
+    try:
+        while True:
+            watchdog.loop()
+            watchdog.sleep()
+    except KeyboardInterrupt:
+        watchdog.stop()
 
 
 if __name__ == '__main__':
