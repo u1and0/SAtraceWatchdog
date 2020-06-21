@@ -3,6 +3,7 @@
 txtファイルとpngファイルの差分をチェックして、グラフ化されていないファイルだけpng化します。
 """
 import sys
+import copy
 import argparse
 from time import sleep
 import datetime
@@ -193,7 +194,7 @@ class Watch:
         # SN report
         new_fileset = {
             i + '.txt'
-            for i in report.newindex(self.stats_file, txts)
+            for i in report.newindex(self.stats_file, copy.copy(txts))
         }
         if new_fileset:
             trs = tracer.read_traces(*new_fileset, usecols=self.config.usecols)
@@ -234,6 +235,8 @@ class Watch:
             # ---
             # filename format must be [ %Y%m%d_%H%M%S.txt ]
             days_set = {_[:8] for _ in txts}
+            if Watch.args.debug:
+                Slack().log(self.log.debug, f'day_set: {days_set}')
             # txts directory 内にある%Y%m%dのsetに対して実行
             for day in days_set:
                 # waterfall_{day}.pngが存在すれば最終処理が完了しているので
@@ -266,8 +269,8 @@ class Watch:
                 _n = DAY_SECOND // self.config.transfer_rate  # => 288
                 num_of_files_ok = len(files) >= _n
                 if Watch.args.debug:
-                    print('limit:', _n)
-                    print('length: ', len(files))
+                    Slack().log(self.log.debug, f'limit: {_n}')
+                    Slack().log(self.log.debug, f'length: {len(files)}')
                 filename = self.filename_resolver(yyyymmdd=day,
                                                   remove_flag=num_of_files_ok)
                 trss.heatmap(title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',

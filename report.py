@@ -42,38 +42,6 @@ def newindex(reportfile, fileset: set):
         fileset -= old_fileset
     return fileset
 
-    # def sntable(filenameset: set, centers: list, span: float):
-    #     """ centers周りのbandsignal平均値を返す """
-    #     trss = tracer.read_traces(*filenameset, usecols='AVER')
-    #     df = pd.DataFrame(
-    #         {f'{i}±{span} signal': trss.bandsignal(i, span)
-    #          for i in centers})
-    #     df['noisefloor'] = trss.noisefloor()
-    #     return df
-
-    # watchdog.py に書く
-    # cdf = pd.concat([bdf, adf]).sort_index()
-    # cdf.to_csv(reportfile)
-    """
-    ```python:return bandsignal()
-    def sntable(self, center, span):
-        usage:
-        trss = read_traces(*filenames, usecols='AVER')
-        trss.sntable(22, 0.2)
-
-        # trss = read_traces(*(f'{i}.txt' for i in new_idx), usecols='AVER')
-        # trst = tracer.Trace(trss.sort_index().T)
-        _n = trss.noisefloor(axis=0)
-        _s = trss.bandsignal(center, span)
-    !   return pd.DataFrame({f'{center}±{span} signal': _s, 'noisefloor': _n})
-        # return cdf
-
-    trss = read_traces(*files, 'AVER')
-    ! df = pd.DataFrame({f'signal {i}pm0.2':trss.bandsignal(i, 0.2) for i in [22, 23, 24]})
-    ! df['noisefloor'] = trss.noisefloor(axis=0)
-    ```
-    """
-
 
 if __name__ == '__main__':
     import doctest

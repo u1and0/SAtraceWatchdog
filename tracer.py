@@ -187,17 +187,6 @@ class Trace(pd.DataFrame):
             Trace.marker = _config['marker']
             Trace.marker.sort()
 
-    def transpose(self, *args, **kwargs):
-        nv.validate_transpose(args, kwargs)
-        return self
-
-    T = property(
-        transpose,
-        doc="""
-        Return the transpose, which is by definition self.
-        """,
-    )
-
     def noisefloor(self, *args, **kwargs):
         """ 1/4 quantileをノイズフロアとし、各列に適用して返す"""
         return self.quantile(0.25, *args, **kwargs)
@@ -286,7 +275,7 @@ class Trace(pd.DataFrame):
         ax.xaxis.set_ticks_position('top')  # xラベル上にする
 
         # __MAKE WATERFALL DATA________________
-        dfk = self.resample('5T').first()  # 隙間埋める
+        dfk = self.T.resample('5T').first()  # 隙間埋める
         dfk = dfk.reindex(pd.date_range(title, freq='5T',
                                         periods=288))  # 最初/最後埋め
         dfk.index = np.arange(len(dfk))  # 縦軸はdatetime index描画できないのでintにする
