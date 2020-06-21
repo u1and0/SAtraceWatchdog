@@ -12,8 +12,8 @@ import logging
 from logging import handlers
 from pathlib import Path
 from collections import namedtuple, defaultdict
-import matplotlib.pyplot as plt
 import pandas as pd
+import matplotlib.pyplot as plt
 from SAtraceWatchdog import tracer
 from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
@@ -27,12 +27,16 @@ class Watch:
     root = Path(__file__).parent
     parser.add_argument('-d',
                         '--directory',
-                        help='出力ディレクトリ',
+                        help='画像ファイル出力ディレクトリ',
                         default=Path.cwd())
     parser.add_argument('-l',
                         '--logdirectory',
                         help='ログファイル出力ディレクトリ',
                         default=root / 'log')
+    parser.add_argument('-s',
+                        '--statsdirectory',
+                        help='統計ファイル出力ディレクトリ',
+                        default=root / 'stats')
     parser.add_argument('--debug', help='debug機能有効化', action='store_true')
     parser.add_argument('-v', '--version', action='store_true')
     args = parser.parse_args()
@@ -45,13 +49,21 @@ class Watch:
         self.no_update_count = 0
         self.no_update_threshold = 1
         self.configfile = Watch.root / 'config/config.json'
-        self.config = None  # Watch.loop() の毎回のループでで読み込み
-        # direcroy, filepathの設定
-        Watch.args.directory = Watch.directory_check(Watch.args.directory)
-        Watch.args.logdirectory = Watch.directory_check(
-            Watch.args.logdirectory)
-        self.summary_file = Watch.args.logdirectory / 'watchdog_summary.yaml'
-        self.stats_file = Watch.args.logdirectory / 'SN.csv'
+        self.config = None  # Watch.loop() の毎回のループで読み込み
+        # directory, filepathの設定
+        _directories = [
+            Watch.args.directory,
+            Watch.args.logdirectory,
+            Watch.args.statsdirectory,
+        ]
+        for _d in _directories:
+            _d = Watch.directory_check(_d)
+        if Watch.args.debug:
+            print(f'png dir: {Watch.args.directory}')
+            print(f'log dir: {Watch.args.logdirectory}')
+            print(f'stats dir: {Watch.args.statsdirectory}')
+        self.summary_file = Watch.args.statsdirectory / 'watchdog_summary.yaml'
+        self.stats_file = Watch.args.statsdirectory / 'watchdog_SN.csv'
         # loggerの設定
         Watch.set_logger()
         self.log = logging.getLogger(__name__)
@@ -187,20 +199,17 @@ class Watch:
             trs = tracer.read_traces(*new_fileset, usecols=self.config.usecols)
             sndf = trs.sntable(centers=self.config.marker, span=0.2)
             if self.stats_file.exists():
-                sndf = pd.concat([  # Concat [old_index, new_index]
+                sndf = pd.concat([  # Concat [olddata, newdata]
                     pd.read_csv(self.stats_file, index_col=0,
                                 parse_dates=True),
                     sndf,
                 ])
             sndf.sort_index(inplace=True)
-            if Watch.args.debug:
-                message = '[DEBUG] Print S/N report'
-                self.log.debug(message, sndf)
-                Watch.slackbot.message(message=message)
             sndf.to_csv(self.stats_file)  # Save file
-            message = f'S/N レポート{self.stats_file}を出力しました'
-            self.log.info(message)
-            Watch.slackbot.message(message=message)
+            Slack().log(self.log.info, f'S/N レポート{self.stats_file}を出力しました')
+            if Watch.args.debug:
+                Slack().log(self.log.debug,
+                            f'[DEBUG] Print S/N report\n{sndf}')
 
         # ---
         # One file plot
