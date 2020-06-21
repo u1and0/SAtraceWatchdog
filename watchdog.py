@@ -36,7 +36,6 @@ class Watch:
     parser.add_argument('--debug', help='debug機能有効化', action='store_true')
     parser.add_argument('-v', '--version', action='store_true')
     args = parser.parse_args()
-    slackbot = Slack()
 
     def __init__(self):
         """watchdog init"""
@@ -67,7 +66,7 @@ class Watch:
         if not makedir.exists():  # 存在しないディレクトリ指定でディレクトリ作成
             makedir.mkdir()
             message = f'ディレクトリの作成に成功しました {makedir.resolve()}'
-            print(message)
+            print(message)  # loggerが設定できてないのでstdout に print
         if not makedir.is_dir():  # 存在はするけれどもディレクトリ以外を指定されたらエラー
             message = f'{makedir.resolve()} はディレクトリではありません'
             raise IOError(message)
@@ -156,17 +155,14 @@ class Watch:
         # config file読込
         # ループごとに毎回jsonを読みに行く
         if not Path(self.configfile).exists():
-            message = f'設定ファイル {self.configfile} が存在しません'
-            self.log.error(message)
-            Watch.slackbot.message(message)
-            raise FileNotFoundError(message)
+            Slack().log(self.log.error,
+                        f'設定ファイル {self.configfile} が存在しません',
+                        err=FileNotFoundError)
         self.config = self.load_config()
         # 前回のconfigとことなる内容が読み込まれたらログに出力
         if not self.config == self.last_config:
             self.last_config = self.config
-            message = f'設定が更新されました {self.config}'
-            self.log.info(message)
-            Watch.slackbot.message(message)
+            Slack().log(self.log.info, f'設定が更新されました {self.config}')
 
         # ファイル名差分確認
         pattern = self.config.glob
@@ -180,9 +176,7 @@ class Watch:
             timestamps=(i[:8] for i in txts),  # 8 <= number of yyyymmdd
             filename=self.summary_file)
         if Watch.args.debug:
-            message = f'[DEBUG] FILE COUNTS {_counts}'
-            self.log.info(message)
-            Watch.slackbot.message(message=message)
+            Slack().log(self.log.debug, f'[DEBUG] FILE COUNTS {_counts}')
 
         # SN report
         new_fileset = {
@@ -215,9 +209,8 @@ class Watch:
         try:
             for base in update_files:
                 plot_onefile(base + '.txt', directory=Watch.args.directory)
-                message = f'画像の出力に成功しました {Watch.args.directory}/{base}.png'
-                self.log.info(message)
-                Watch.slackbot.message(message=message)
+                Slack().log(self.log.info,
+                            f'画像の出力に成功しました {Watch.args.directory}/{base}.png')
                 # Reset count
                 self.no_update_count = 0
                 self.no_update_threshold = 2
@@ -276,28 +269,24 @@ class Watch:
                 # ファイルに保存するときplt.close()しないと
                 # 複数プロットが1pngファイルに表示される
                 plt.close()  # reset plot
-                message = f'画像の出力に成功しました {filename}'
-                if Watch.args.debug:
-                    message = '[DEBUG] ' + message
-                self.log.info(message)
-                Watch.slackbot.message(message=message)
+                Slack().log(
+                    self.log.debug if Watch.args.debug else self.log.info,
+                    f'画像の出力に成功しました {filename}')
 
                 # データの抜けを検証"""
                 rate = '{}T'.format(self.config.transfer_rate // 60)
                 droped_data = trss.guess_fallout(rate=rate)
                 if any(droped_data):
-                    message = f'データが抜けています {droped_data}'
-                    self.log.warning(message)
-                    Watch.slackbot.message(message)
+                    Slack().log(self.log.warning, f'データが抜けています {droped_data}')
         except ValueError as e:
-            message = f'{base}: {e}, txtファイルは送信されてきましたがデータが足りません'
-            self.log.error(message)
-            Watch.slackbot.message(message)
+            Slack().log(self.log.error,
+                        f'{base}: {e}, txtファイルは送信されてきましたがデータが足りません')
 
     def sleep(self):
         """Interval for next loop"""
         if Watch.args.debug:
-            self.log.info(f'[DEBUG] sleeping... {self.config.check_rate}')
+            Slack().log(self.log.debug,
+                        f'sleeping... {self.config.check_rate}')
         sleep(self.config.check_rate)
 
     def no_update_warning(self):
@@ -310,8 +299,11 @@ class Watch:
         else:
             message = f'最後の更新から{no_uptime//3600}時'
         message += '間更新がありません。データの送信状況を確認してください。'
-        self.log.warning(message)
-        Watch.slackbot.message(message)
+        Slack().log(self.log.warning, message)
+
+    def stop(self):
+        Slack().log(self.log.info, 'キーボード入力により監視を終了しました。')
+        exit(0)
 
 
 def main():

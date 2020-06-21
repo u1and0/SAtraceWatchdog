@@ -41,3 +41,11 @@ class Slack:
             "text": message,
         }
         requests.post(url, data=data)
+
+    @classmethod
+    def log(cls, func, message, err=None):
+        """logging関数とSlack().message に同じメッセージを投げる"""
+        func(message)  # log.info(message), log.error(message), ...
+        cls.message(message)
+        if err:
+            raise err
