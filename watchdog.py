@@ -295,6 +295,16 @@ class Watch:
         message += '間更新がありません。データの送信状況を確認してください。'
         Slack().log(self.log.warning, message)
 
+    def stop(self):
+        """Ctrl-CでWatch.loop()を正常終了する。"""
+        Slack().log(self.log.info, 'キーボード入力により監視を正常終了しました。')
+        sys.exit(0)
+
+    def error(self, err):
+        """Tracebackをエラーに含める"""
+        trace_error = partial(self.log.error, exc_info=True)
+        Slack().log(trace_error, err)
+
 
 def parse():
     """引数解析"""
@@ -328,20 +338,15 @@ def main():
     watchdog = Watch(args)
     Slack().log(watchdog.log.info,
                 f'ディレクトリの監視を開始しました。 SAtraceWatchdog {VERSION}')
-    try:
-        while True:
+    while True:
+        try:
             watchdog.loop()
+        except KeyboardInterrupt:
+            watchdog.stop()
+        except BaseException as _e:
+            watchdog.error(_e)
+        else:
             watchdog.sleep()
-    except KeyboardInterrupt:
-        # Ctrl-CでWatch.loop()を正常終了する。
-        Slack().log(watchdog.log.info, 'キーボード入力により監視を正常終了しました。')
-        sys.exit(0)
-
-    except BaseException as _e:
-        # Tracebackをエラーに含める
-        logerr = partial(watchdog.log.error, exc_info=True)
-        Slack().log(logerr, _e)
-        sys.exit(1)
 
 
 if __name__ == '__main__':
