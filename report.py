@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 """時系列ファイルのサマリーカウント"""
+from glob import iglob
+from datetime import datetime
+from pathlib import Path
 from collections import Counter
 import yaml
+import pandas as pd
+from SAtraceWatchdog import tracer
 
 
 def timestamp_count(timestamps, filename):
@@ -15,12 +20,27 @@ def timestamp_count(timestamps, filename):
     >>> testdata = pd.date_range(start=now,\
                 freq='H', periods=100).strftime('%Y%m%d_%H%M%S')
     >>> print(timestamp_count(( i[:8] for i in testdata ), 'summary.yaml'))
-    Counter({'20200406': 24, '20200407': 24, '20200408': 24, '20200409': 24, '20200410': 4})
+    Counter({'20200406': 24, '20200407': 24,
+            '20200408': 24, '20200409': 24, '20200410': 4})
     """
     count = Counter(timestamps)
     with open(filename, 'w') as _f:
         yaml.dump(dict(count), _f)
     return count
+
+
+def newindex(reportfile, fileset: set):
+    """古いreportfile内のdatetimeインデックスから
+    現在のファイルセットから解析済みファイルセットを差し引いた
+    ファイルセットを返す
+    """
+    if Path(reportfile).exists():
+        # indexのみ必要
+        # あとでstrftime()するためにparse_dateオプションあり
+        idx = pd.read_csv(reportfile, usecols=[0], parse_dates=[0]).squeeze()
+        old_fileset = {i.strftime('%Y%m%d_%H%M%S') for i in idx}
+        fileset -= old_fileset
+    return fileset
 
 
 if __name__ == '__main__':

@@ -4,9 +4,9 @@ import datetime
 import json
 from pathlib import Path
 import numpy as np
-from scipy import stats
 import seaborn as sns
 import pandas as pd
+from pandas.compat.numpy import function as nv
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
 from matplotlib.pylab import yticks
@@ -118,12 +118,11 @@ def read_traces(*files, usecols, **kwargs):
     usecolsを指定しないとValueError
     ['AVER'], ['MINH'], ['MAXH']などを指定する。
     """
-    df = pd.DataFrame({
+    return Trace({
         datetime.datetime.strptime(Path(f).stem, '%Y%m%d_%H%M%S'):  # basename
         read_trace(f, usecols=usecols, *kwargs).squeeze()
         for f in files
     })
-    return Trace(df)
 
 
 def title_renamer(filename: str) -> str:
@@ -180,25 +179,53 @@ class Trace(pd.DataFrame):
     _configfile = _dirname / 'config/config.json'
     marker = []
 
-    def __init__(self, dataframe):
-        super().__init__(dataframe)
+    def __init__(self, *args, **kwargs):
+        super().__init__(pd.DataFrame(*args, **kwargs))
         if Path(Trace._configfile).exists():
             with open(Trace._configfile, 'r') as f:
                 _config = json.load(f)
             Trace.marker = _config['marker']
             Trace.marker.sort()
 
-    def noisefloor(self, axis: int = 0, percent: float = 25):
-        """ 1/4 medianをノイズフロアとし、各列に適用して返す
-        引数:
-            df: 行が周波数、列が日時(データフレーム型)
-            axis: 0 or 1.
-                0: 列に適用(デフォルト)
-                1: 行に適用
-        戻り値:
-            df: ノイズフロア(データフレーム型)
+    def noisefloor(self, *args, **kwargs):
+        """ 1/4 quantileをノイズフロアとし、各列に適用して返す"""
+        return self.quantile(0.25, *args, **kwargs)
+
+    def bandsignal(self, center, span):
+        """centerから±spanのindexに対してのデシベル平均を返す
+        >>> aa = np.arange(1, 31).reshape(3, -1).T
+        >>> index = np.linspace(0.1, 1, 10)
+        >>> trs = Trace(aa, index=index, colomns=list('abc'))
+        >>> trs
+              a   b   c
+        0.1   1  11  21
+        0.2   2  12  22
+        0.3   3  13  23
+        0.4   4  14  24
+        0.5   5  15  25
+        0.6   6  16  26
+        0.7   7  17  27
+        0.8   8  18  28
+        0.9   9  19  29
+        1.0  10  20  30
+        >>> # trs.bandsignal returns dB mean of index 0.4~0.6
+        >>> trs.bandsignal(center=0.5, span=0.1)
+        a     6.410678
+        b    16.410678
+        c    26.410678
+        dtype: float64
+        >>> # RuntimeWarning: divide by zero encountered in log10
         """
-        return self.apply(lambda x: stats.scoreatpercentile(x, percent), axis)
+        df = self.reindex(self.marker).loc[center - span:center + span]
+        return df.db2mw().mean().mw2db()
+
+    def sntable(self, centers: list, span: float):
+        """ centers周りのbandsignal平均値とnoisefloorのテーブルを返す """
+        df = pd.DataFrame(
+            {f'{i}±{span} signal': self.bandsignal(i, span)
+             for i in centers})
+        df['noisefloor'] = self.noisefloor()
+        return df
 
     def heatmap(self,
                 title,
@@ -249,7 +276,6 @@ class Trace(pd.DataFrame):
 
         # __MAKE WATERFALL DATA________________
         dfk = self.T.resample('5T').first()  # 隙間埋める
-        # dfk = df.db2mw().resample('5T').mean().mw2db()  # 隙間埋める
         dfk = dfk.reindex(pd.date_range(title, freq='5T',
                                         periods=288))  # 最初/最後埋め
         dfk.index = np.arange(len(dfk))  # 縦軸はdatetime index描画できないのでintにする
@@ -284,38 +310,6 @@ class Trace(pd.DataFrame):
         plt.subplots_adjust(hspace=0)  # グラフ間の隙間なし
         return ax
 
-    def mw2db(self):
-        """mW -> dB
-        Usage: `df.mw2db()` or `mw2db(df)`
-
-        ```python:TEST
-        mw = pd.Series(np.arange(11))
-        df = pd.DataFrame({'watt': mw, 'dBm': mw.mw2db(),
-                          'dB to watt': mw.mw2db().db2mw()})
-        ```
-        print(df)
-        # [Out]#     dB to watt        dBm  watt
-        # [Out]# 0          0.0       -inf     0
-        # [Out]# 1          1.0   0.000000     1
-        # [Out]# 2          2.0   3.010300     2
-        # [Out]# 3          3.0   4.771213     3
-        # [Out]# 4          4.0   6.020600     4
-        # [Out]# 5          5.0   6.989700     5
-        # [Out]# 6          6.0   7.781513     6
-        # [Out]# 7          7.0   8.450980     7
-        # [Out]# 8          8.0   9.030900     8
-        # [Out]# 9          9.0   9.542425     9
-        # [Out]# 10        10.0  10.000000    10
-        ```
-        """
-        return Trace(10 * np.log10(self))
-
-    def db2mw(self):
-        """dB -> mW
-        Usage: `df.db2mw()` or `db2mw(df)`
-        """
-        return Trace(np.power(10, self / 10))
-
     def plot_markers(self, *args, **kwargs):
         """marker plot as Diamond"""
         slices = self.squeeze().reindex(self.marker).loc[self.marker]
@@ -336,3 +330,55 @@ class Trace(pd.DataFrame):
         bools = resample.isna().any(1)  # NaN行をTrueにする
         nan_idx = bools[bools].index  # Trueのとこのインデックスだけ抽出
         return nan_idx
+
+
+def db2mw(a):
+    """dB -> mW
+    Usage: `df.db2mw()` or `db2mw(df)`
+    >>> db2mw(0)
+    1.0
+    >>> db2mw(10)
+    10.0
+    >>> np.apply_along_axis(db2mw, 0, np.array([0,3,6,10]))
+    array([ 1.        ,  1.99526231,  3.98107171, 10.        ])
+    """
+    return np.power(10, a / 10)
+
+
+def mw2db(a):
+    """mW -> dB
+    Usage: `df.mw2db()` or `mw2db(df)`
+    >>> mw = pd.Series(np.arange(11))
+    >>> df = pd.DataFrame({'watt': mw, 'dBm': mw.mw2db(),\
+                      'dB to watt': mw.mw2db().db2mw()})
+    >>> df
+        watt        dBm  dB to watt
+    0      0       -inf         0.0
+    1      1   0.000000         1.0
+    2      2   3.010300         2.0
+    3      3   4.771213         3.0
+    4      4   6.020600         4.0
+    5      5   6.989700         5.0
+    6      6   7.781513         6.0
+    7      7   8.450980         7.0
+    8      8   9.030900         8.0
+    9      9   9.542425         9.0
+    10    10  10.000000        10.0
+    """
+    return 10 * np.log10(a)
+
+
+# import tracer
+#    either
+# tracer.db2mw(df)
+#    or
+# df.db2mw()
+# will be ok
+setattr(pd.Series, 'db2mw', db2mw)
+setattr(pd.DataFrame, 'db2mw', db2mw)
+setattr(pd.Series, 'mw2db', mw2db)
+setattr(pd.DataFrame, 'mw2db', mw2db)
+
+if __name__ == '__main__':
+    import doctest
+    doctest.testmod()
