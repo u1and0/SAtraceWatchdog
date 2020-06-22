@@ -171,7 +171,7 @@ class Watch:
             timestamps=(i[:8] for i in txts),  # 8 <= number of yyyymmdd
             filename=self.statsdirectory / 'watchdog_summary.yaml')
         if self.debug:
-            Slack().log(self.log.debug, f'[DEBUG] FILE COUNTS {_counts}')
+            Slack().log(print, f'[DEBUG] FILE COUNTS {_counts}')
 
         # SN report
         new_fileset = {
@@ -192,8 +192,7 @@ class Watch:
             sndf.to_csv(self.stats_file)  # Save file
             Slack().log(self.log.info, f'S/N レポート{self.stats_file}を出力しました')
             if self.debug:
-                Slack().log(self.log.debug,
-                            f'[DEBUG] Print S/N report\n{sndf}')
+                Slack().log(print, f'[DEBUG] Print S/N report\n{sndf}')
 
         # ---
         # One file plot
@@ -219,7 +218,7 @@ class Watch:
             # filename format must be [ %Y%m%d_%H%M%S.txt ]
             days_set = {_[:8] for _ in txts}
             if self.debug:
-                Slack().log(self.log.debug, f'[DEBUG] day_set: {days_set}')
+                Slack().log(print, f'[DEBUG] day_set: {days_set}')
             # txts directory 内にある%Y%m%dのsetに対して実行
             for day in days_set:
                 # waterfall_{day}.pngが存在すれば最終処理が完了しているので
@@ -232,12 +231,11 @@ class Watch:
                 files = glob.glob(f'{day}_*.txt')
                 if self.debug:
                     Slack().log(
-                        self.log.debug,
+                        print,
                         f'[DEBUG] {day}--LAST FILES-- {len(set(Watch.last_files[day]))}'
                     )
                     Slack().log(
-                        self.log.debug,
-                        f'[DEBUG] {day}--NOW FILES-- {len(set(files))}')
+                        print, f'[DEBUG] {day}--NOW FILES-- {len(set(files))}')
 
                 # waterfall_update.pngが存在して、
                 # かつ
@@ -254,9 +252,8 @@ class Watch:
                 _n = DAY_SECOND // Watch.config.transfer_rate  # => 288
                 num_of_files_ok = len(files) >= _n
                 if self.debug:
-                    Slack().log(self.log.debug, f'[DEBUG] limit: {_n}')
-                    Slack().log(self.log.debug,
-                                f'[DEBUG] length: {len(files)}')
+                    Slack().log(print, f'[DEBUG] limit: {_n}')
+                    Slack().log(print, f'[DEBUG] length: {len(files)}')
                 filename = self.filename_resolver(yyyymmdd=day,
                                                   remove_flag=num_of_files_ok)
                 trss.heatmap(title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
@@ -282,7 +279,7 @@ class Watch:
     def sleep(self):
         """Interval for next loop"""
         if self.debug:
-            Slack().log(self.log.debug,
+            Slack().log(print,
                         f'[DEBUG] sleeping... {Watch.config.check_rate}')
         sleep(Watch.config.check_rate)
 
