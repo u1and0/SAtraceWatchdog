@@ -194,7 +194,7 @@ class Trace(pd.DataFrame):
         """centerから±spanのindexに対してのデシベル平均を返す
         >>> aa = np.arange(1, 31).reshape(3, -1).T
         >>> index = np.linspace(0.1, 1, 10)
-        >>> trs = Trace(aa, index=index, colomns=list('abc'))
+        >>> trs = Trace(aa, index=index, columns=list('abc'))
         >>> trs
               a   b   c
         0.1   1  11  21
@@ -208,14 +208,14 @@ class Trace(pd.DataFrame):
         0.9   9  19  29
         1.0  10  20  30
         >>> # trs.bandsignal returns dB mean of index 0.4~0.6
-        >>> trs.bandsignal(center=0.5, span=0.1)
+        >>> trs.bandsignal(center=0.5, span=0.2)
         a     6.410678
         b    16.410678
         c    26.410678
         dtype: float64
         >>> # RuntimeWarning: divide by zero encountered in log10
         """
-        df = self.reindex(self.marker).loc[center - span:center + span]
+        df = self.reindex(self.marker).loc[center - span / 2:center + span / 2]
         return df.db2mw().mean().mw2db()
 
     def sntable(self, centers: list, span: float):
@@ -228,7 +228,7 @@ class Trace(pd.DataFrame):
         2020/5/31 9:09 | -60                | -66                | -64        |
         """
         df = pd.DataFrame({
-            f'{i} span {span*2} signal': self.bandsignal(i, span)
+            f'{i} span {span} signal': self.bandsignal(i, span)
             for i in centers
         })
         df['noisefloor'] = self.noisefloor()

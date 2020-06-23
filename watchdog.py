@@ -180,7 +180,7 @@ class Watch:
         if new_fileset:
             trs = tracer.read_traces(*new_fileset,
                                      usecols=Watch.config.usecols)
-            sndf = trs.sntable(centers=sorted(Watch.config.marker), span=0.2)
+            sndf = trs.sntable(centers=sorted(Watch.config.marker), span=0.4)
             sndf = report.snreport(sndf, self.stats_file)
             Slack().log(self.log.info, f'S/N レポート{self.stats_file}を出力しました')
             if self.debug:
