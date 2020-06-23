@@ -14,7 +14,6 @@ from logging import handlers
 from functools import partial
 from pathlib import Path
 from collections import namedtuple, defaultdict
-import pandas as pd
 import matplotlib.pyplot as plt
 from SAtraceWatchdog import tracer
 from SAtraceWatchdog.oneplot import plot_onefile
@@ -182,14 +181,7 @@ class Watch:
             trs = tracer.read_traces(*new_fileset,
                                      usecols=Watch.config.usecols)
             sndf = trs.sntable(centers=sorted(Watch.config.marker), span=0.2)
-            if self.stats_file.exists():
-                sndf = pd.concat([  # Concat [olddata, newdata]
-                    pd.read_csv(self.stats_file, index_col=0,
-                                parse_dates=True),
-                    sndf,
-                ])
-            sndf.sort_index(inplace=True)
-            sndf.to_csv(self.stats_file)  # Save file
+            sndf = report.snreport(sndf, self.stats_file)
             Slack().log(self.log.info, f'S/N レポート{self.stats_file}を出力しました')
             if self.debug:
                 Slack().log(print, f'[DEBUG] Print S/N report\n{sndf}')

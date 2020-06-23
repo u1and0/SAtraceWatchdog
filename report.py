@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """時系列ファイルのサマリーカウント"""
-from glob import iglob
 from datetime import datetime
 from pathlib import Path
 from collections import Counter
 import yaml
 import pandas as pd
-from SAtraceWatchdog import tracer
 
 
 def timestamp_count(timestamps, filename):
@@ -41,6 +39,18 @@ def newindex(reportfile, fileset: set):
         old_fileset = {i.strftime('%Y%m%d_%H%M%S') for i in idx}
         fileset -= old_fileset
     return fileset
+
+
+def snreport(traces, filename):
+    """snreport doc"""
+    if Path(filename).exists():
+        traces = pd.concat([  # Concat [olddata, newdata]
+            pd.read_csv(filename, index_col=0, parse_dates=True),
+            traces,
+        ])
+    traces.sort_index(inplace=True)
+    traces.to_csv(filename)  # Save file
+    return traces
 
 
 if __name__ == '__main__':

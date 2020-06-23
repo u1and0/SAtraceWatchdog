@@ -5,11 +5,10 @@ import json
 from pathlib import Path
 import numpy as np
 import seaborn as sns
-import pandas as pd
-from pandas.compat.numpy import function as nv
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
 from matplotlib.pylab import yticks
+import pandas as pd
 
 
 def config_parse_freq(key: str) -> (int, str):
@@ -222,14 +221,14 @@ class Trace(pd.DataFrame):
     def sntable(self, centers: list, span: float):
         """ centers周りのbandsignal平均値とnoisefloorのテーブルを返す
         return such DataFrame
-                       | 56 span 0.2 signal | 57 span 0.2 signal | noisefloor |
+                       | 56 span 0.4 signal | 57 span 0.4 signal | noisefloor |
         ---------------|--------------------|--------------------|------------|
         2020/5/31 8:59 | -58                | -60                | -54        |
         2020/5/31 9:04 | -56                | -60                | -60        |
         2020/5/31 9:09 | -60                | -66                | -64        |
         """
         df = pd.DataFrame({
-            f'{i} span {span} signal': self.bandsignal(i, span)
+            f'{i} span {span*2} signal': self.bandsignal(i, span)
             for i in centers
         })
         df['noisefloor'] = self.noisefloor()
