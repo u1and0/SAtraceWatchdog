@@ -78,13 +78,16 @@ $ docker run -d \
 * 設定ファイルはconfig/config.jsonを参照してください。
 
 ### サマリー
-* logディレクトリに日にちごとのデータファイルカウントの結果を出力します。
+* statsディレクトリに日にちごとのデータファイルカウントの結果を出力します。
 * ファイル名: `watchdog_summary.yaml`
 > (例) '20151111': 7, '20161108': 12
 > 2015年11月11日に7ファイル、2016年11月08日に12ファイルが出力されたことを示します。
+* 一行に各時間に対するconfigファイルに記されたマーカーの±0.2kHz範囲のdB平均値を表にします。
+* ファイル名: `watchdog_SN.csv`
 
 
 ## Update
+* v0.4.0          [add] SN report csv
 * v0.3.0          [add] Output count report, Config color map high/low.
 * v0.2.6          [fix] default directory path
 * v0.2.5          [fix] `read_traces()` use `reindex()` if datafile has no data value
