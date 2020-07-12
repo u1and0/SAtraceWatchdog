@@ -9,6 +9,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
 from matplotlib.pylab import yticks
+from tqdm import tqdm
 
 
 def config_parse_freq(key: str) -> (int, str):
@@ -118,7 +119,7 @@ def read_traces(*files, usecols, **kwargs):
     return Trace({
         datetime.datetime.strptime(Path(f).stem, '%Y%m%d_%H%M%S'):  # basename
         read_trace(f, usecols=usecols, *kwargs).squeeze()
-        for f in files
+        for f in tqdm(files)
     })
 
 
