@@ -20,7 +20,7 @@ from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
 from SAtraceWatchdog import report
 
-VERSION = 'v0.4.0'
+VERSION = 'v0.5.0'
 DAY_SECOND = 60 * 60 * 24
 ROOT = Path(__file__).parent
 
@@ -47,7 +47,7 @@ class Watch:
             print(f'[DEBUG] PNG DIR: {self.directory}')
             print(f'[DEBUG] LOG DIR: {self.logdirectory}')
             print(f'[DEBUG] STATS DIR: {self.statsdirectory}')
-        self.stats_file = self.statsdirectory / 'watchdog_SN.csv'
+        self.stats_file = self.statsdirectory / 'watchdog_SN.xlsx'
         # loggerの設定
         self.set_logger()
         self.log = logging.getLogger(__name__)

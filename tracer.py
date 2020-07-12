@@ -5,10 +5,11 @@ import json
 from pathlib import Path
 import numpy as np
 import seaborn as sns
+import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
 from matplotlib.pylab import yticks
-import pandas as pd
+from tqdm import tqdm
 
 
 def config_parse_freq(key: str) -> (int, str):
@@ -23,20 +24,22 @@ def read_conf(line: str) -> dict:
     """1行目のデータからconfigを読み取りdictで返す
 
     データ例(実際は改行なし)
-    # <20161108_021106> *RST;*CLS;
-        :INP:COUP DC;
-        :BAND:RES 1 Hz;
-        :AVER:COUNT 20;
-        :SWE:POIN 2001;
-        :FREQ:CENT 22 kHz;
-        :FREQ:SPAN 8 kHz;
-        :TRAC1:TYPE MINH;
-        :TRAC2:TYPE AVER;
-        :TRAC3:TYPE MAXH;
-        :INIT:CONT 0;
-        :FORM REAL,32;
-        :FORM:BORD SWAP;
-        :INIT:IMM;
+    <1列Trace>                      <3列Trace>
+    # 20200627_180505 *RST;         # <20161108_021106> *RST;
+    *CLS;                           *CLS;
+    :INP:COUP DC;                   :INP:COUP DC;
+    :BAND:RES 1 Hz;                 :BAND:RES 1 Hz;
+    :AVER:COUNT 10;                 :AVER:COUNT 20;
+    :SWE:POIN 1001;                 :SWE:POIN 2001;
+    :FREQ:CENT 22.2 kHz;            :FREQ:CENT 22 kHz;
+    :FREQ:SPAN 2 kHz;               :FREQ:SPAN 8 kHz;
+    :TRAC1:TYPE AVER;               :TRAC1:TYPE MINH;
+    :INIT:CONT 0;                   :TRAC2:TYPE AVER;
+    :FORM REAL,32;                  :TRAC3:TYPE MAXH;
+    :FORM:BORD SWAP;                :INIT:CONT 0;
+    :INIT:IMM;                      :FORM REAL,32;
+    :POW:ATT 0;                     :FORM:BORD SWAP;
+    :DISP:WIND:TRAC:Y:RLEV -30 dBm; :INIT:IMM;
     """
     conf_list = [
         i.split(maxsplit=1)  # split first space
@@ -71,11 +74,7 @@ def read_trace(
             config = read_conf(f.readline())
 
     # Set config
-    names = [
-        config[':TRAC1:TYPE'],
-        config[':TRAC2:TYPE'],
-        config[':TRAC3:TYPE'],
-    ]
+    names = [v for k, v in config.items() if k.startswith(':TRAC')]
     center, _ = config_parse_freq(config[':FREQ:CENT'])
     span, unit = config_parse_freq(config[':FREQ:SPAN'])
     points = int(config[':SWE:POIN'])
@@ -120,7 +119,7 @@ def read_traces(*files, usecols, **kwargs):
     return Trace({
         datetime.datetime.strptime(Path(f).stem, '%Y%m%d_%H%M%S'):  # basename
         read_trace(f, usecols=usecols, *kwargs).squeeze()
-        for f in files
+        for f in tqdm(files)
     })
 
 
