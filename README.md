@@ -83,10 +83,11 @@ $ docker run -d \
 > (例) '20151111': 7, '20161108': 12
 > 2015年11月11日に7ファイル、2016年11月08日に12ファイルが出力されたことを示します。
 * 一行に各時間に対するconfigファイルに記されたマーカーの±0.2kHz範囲のdB平均値を表にします。
-* ファイル名: `watchdog_SN.csv`
+* ファイル名: `watchdog_SN.xlsx`
 
 
 ## Update
+* v0.5.0          [add] SN report xlsx, read_conf() from any TRACE columns data, show progress bar
 * v0.4.0          [add] SN report csv
 * v0.3.0          [add] Output count report, Config color map high/low.
 * v0.2.6          [fix] default directory path
