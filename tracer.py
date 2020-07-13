@@ -119,7 +119,7 @@ def read_traces(*files, usecols, **kwargs):
     return Trace({
         datetime.datetime.strptime(Path(f).stem, '%Y%m%d_%H%M%S'):  # basename
         read_trace(f, usecols=usecols, *kwargs).squeeze()
-        for f in tqdm(files)
+        for f in tqdm(files, leave=False)  # remove progress bar after all
     })
 
 

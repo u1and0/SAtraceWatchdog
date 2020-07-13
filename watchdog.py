@@ -273,6 +273,7 @@ class Watch:
         if self.debug:
             Slack().log(print,
                         f'[DEBUG] sleeping... {Watch.config.check_rate}')
+        # remove progress bar after all
         for _ in tqdm(range(Watch.config.check_rate), leave=False):
             sleep(1)
 
