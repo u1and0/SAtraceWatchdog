@@ -15,6 +15,7 @@ from functools import partial
 from pathlib import Path
 from collections import namedtuple, defaultdict
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 from SAtraceWatchdog import tracer
 from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
@@ -272,7 +273,8 @@ class Watch:
         if self.debug:
             Slack().log(print,
                         f'[DEBUG] sleeping... {Watch.config.check_rate}')
-        sleep(Watch.config.check_rate)
+        for _ in tqdm(range(Watch.config.check_rate), leave=False):
+            sleep(1)
 
     def no_update_warning(self):
         """更新がしばらくないときにWarning上げる"""
