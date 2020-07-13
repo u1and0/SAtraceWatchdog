@@ -2,6 +2,8 @@
 /png*/
 /log/
 /stats/
+/doc/
+/test/
 tags
 /note/
 /config/*.json

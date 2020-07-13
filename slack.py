@@ -3,13 +3,13 @@
 from pathlib import Path
 import json
 import requests
+from SAtraceWatchdog.tracer import json_load_encode_with_bom
 
 ROOT = Path(__file__).parent
 CONFIGFILE = ROOT / 'config/config.json'
 if not CONFIGFILE.exists():
     raise FileNotFoundError(f'{CONFIGFILE} が見つかりません')
-with open(CONFIGFILE) as f:
-    CONFIG = json.load(f)
+CONFIG = json_load_encode_with_bom(CONFIGFILE)
 
 
 class Slack:
