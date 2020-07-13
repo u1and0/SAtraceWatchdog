@@ -13,8 +13,8 @@
 # ビルドコンテナ
 FROM python:3.8.1-buster as builder
 WORKDIR /opt/app
-COPY requirements.txt /opt/app
-RUN pip install --upgrade -r requirements.txt
+COPY requirements.lock /opt/app
+RUN pip install --upgrade -r requirements.lock
 
 # 実行コンテナ
 FROM python:3.8.1-slim-buster as runner
