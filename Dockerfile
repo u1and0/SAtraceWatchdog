@@ -44,4 +44,4 @@ ENTRYPOINT ["/usr/bin/SAtraceWatchdog/watchdog.py"]
 
 LABEL maintainer="u1and0 <e01.ando60@gmail.com>" \
       description="txtファイルとpngファイルの差分をチェックして、グラフ化されていないファイルだけpng化します" \
-      version="u1and0/satracewatchdog:v0.4.0"
+      version="u1and0/satracewatchdog:v0.5.1"
