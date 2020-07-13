@@ -180,8 +180,9 @@ class Trace(pd.DataFrame):
     def __init__(self, *args, **kwargs):
         super().__init__(pd.DataFrame(*args, **kwargs))
         if Path(Trace._configfile).exists():
-            with open(Trace._configfile, 'r') as f:
-                _config = json.load(f)
+            _config = json_load_encode_with_bom(Trace._configfile)
+            # with open(Trace._configfile, 'r', json_encode_with_bom(Trace._configfile)) as f:
+            #     _config = json.load(f)
             Trace.marker = _config['marker']
             Trace.marker.sort()
 
@@ -384,6 +385,20 @@ setattr(pd.Series, 'db2mw', db2mw)
 setattr(pd.DataFrame, 'db2mw', db2mw)
 setattr(pd.Series, 'mw2db', mw2db)
 setattr(pd.DataFrame, 'mw2db', mw2db)
+
+
+def json_load_encode_with_bom(filename):
+    """jsonファイルのBOMあり/なしから適切なencodingを判定して、
+    適切にjson.loadする。
+    """
+    with open(filename) as f:
+        firstline = f.readline()
+    is_with_bom = firstline[0] == '\ufeff'
+    encoding = 'utf-8-sig' if is_with_bom else 'utf-8'
+    with open(filename, 'r', encoding=encoding) as f:
+        config = json.load(f)
+    return config
+
 
 if __name__ == '__main__':
     import doctest

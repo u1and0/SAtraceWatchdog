@@ -87,6 +87,7 @@ $ docker run -d \
 
 
 ## Update
+* v0.5.1          [fix] read_csv()=>read_excel() JSON read with/without BOM
 * v0.5.0          [add] SN report xlsx, read_conf() from any TRACE columns data, show progress bar
 * v0.4.0          [add] SN report csv
 * v0.3.0          [add] Output count report, Config color map high/low.

@@ -20,7 +20,7 @@ from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
 from SAtraceWatchdog import report
 
-VERSION = 'v0.5.0'
+VERSION = 'v0.5.1'
 DAY_SECOND = 60 * 60 * 24
 ROOT = Path(__file__).parent
 
@@ -73,8 +73,7 @@ class Watch:
         config.json を読み込み、
         config_keysに指定されたワードのみをConfigとして返す
         """
-        with open(Watch.configfile, 'r') as f:
-            config_dict = json.load(f)
+        config_dict = tracer.json_load_encode_with_bom(Watch.configfile)
         config_keys = [
             'check_rate',
             'glob',

@@ -13,8 +13,8 @@
 # ビルドコンテナ
 FROM python:3.8.1-buster as builder
 WORKDIR /opt/app
-COPY requirements.txt /opt/app
-RUN pip install --upgrade -r requirements.txt
+COPY requirements.lock /opt/app
+RUN pip install --upgrade -r requirements.lock
 
 # 実行コンテナ
 FROM python:3.8.1-slim-buster as runner
@@ -44,4 +44,4 @@ ENTRYPOINT ["/usr/bin/SAtraceWatchdog/watchdog.py"]
 
 LABEL maintainer="u1and0 <e01.ando60@gmail.com>" \
       description="txtファイルとpngファイルの差分をチェックして、グラフ化されていないファイルだけpng化します" \
-      version="u1and0/satracewatchdog:v0.4.0"
+      version="u1and0/satracewatchdog:v0.5.1"
