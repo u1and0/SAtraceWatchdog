@@ -73,8 +73,7 @@ class Watch:
         config.json を読み込み、
         config_keysに指定されたワードのみをConfigとして返す
         """
-        with open(Watch.configfile, 'r') as f:
-            config_dict = json.load(f)
+        config_dict = tracer.json_load_encode_with_bom(Watch.configfile)
         config_keys = [
             'check_rate',
             'glob',
