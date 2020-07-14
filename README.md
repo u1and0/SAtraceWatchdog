@@ -58,13 +58,25 @@ $ docker run -d \
 * 設定ファイルはconfig/config.jsonにまとめられています。
   * `token`: slackトークン
   * `channel_id`: slack チャンネルID
+  * `slack_post`: slackへのメッセージ、エラー投稿の許可
   * `check_rate`: 確認間隔(sec)
   * `glob`: テキストファイルを抜き出すglobパターン
   * `marker`: マーカーをつける周波数リスト
   * `transfer_rate`: テキストファイル送信間隔(sec)
   * `usecols`: 使用する列名
+  * `color`: スペクトラムプロットの線の色
+  * `linewidth`: スペクトラムプロットの線幅
+  * `figsize`: スペクトラムプロットの画像サイズ
+  * `shownoise`: ノイズフロアの描画
+  * `xstep`: 横軸の段階 (横軸は縦軸と異なり、最高値、最低値はデータから読む)
+  * `ymin`: 縦軸の最低値
+  * `ymax`: 縦軸の最高値
+  * `ystep`: 縦軸の段階
+  * `cmap`: ヒートマップの色使い
   * `cmaphigh`: カラーバーの最高値
   * `cmaplow`: カラーバーの最低値
+  * `cmaplevel`:ヒートマップ色の段階
+  * `cmapstep`:カラーバーのステップ
 
 ### ログ
 * logディレクトリに、監視開始日時の名前でログファイルを作成します。
@@ -87,6 +99,7 @@ $ docker run -d \
 
 
 ## Update
+* v0.6.0          [add] slack flag, noise flag, Graph config tweek from JSON
 * v0.5.1          [fix] read_csv()=>read_excel() JSON read with/without BOM
 * v0.5.0          [add] SN report xlsx, read_conf() from any TRACE columns data, show progress bar
 * v0.4.0          [add] SN report csv
