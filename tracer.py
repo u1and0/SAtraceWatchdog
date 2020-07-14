@@ -5,11 +5,11 @@ import json
 from pathlib import Path
 import numpy as np
 import seaborn as sns
-import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
 from matplotlib.pylab import yticks
 from tqdm import tqdm
+import pandas as pd
 
 
 def config_parse_freq(key: str) -> (int, str):
@@ -181,8 +181,6 @@ class Trace(pd.DataFrame):
         super().__init__(pd.DataFrame(*args, **kwargs))
         if Path(Trace._configfile).exists():
             _config = json_load_encode_with_bom(Trace._configfile)
-            # with open(Trace._configfile, 'r', json_encode_with_bom(Trace._configfile)) as f:
-            #     _config = json.load(f)
             Trace.marker = _config['marker']
             Trace.marker.sort()
 

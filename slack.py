@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Slack に投稿するモジュール"""
 from pathlib import Path
-import json
 import requests
 from SAtraceWatchdog.tracer import json_load_encode_with_bom
 
@@ -41,11 +40,3 @@ class Slack:
             "text": message,
         }
         requests.post(url, data=data)
-
-    @classmethod
-    def log(cls, func, message, err=None):
-        """logging関数とSlack().message に同じメッセージを投げる"""
-        func(message)  # log.info(message), log.error(message), ...
-        cls.message(message)
-        if err:
-            raise err
