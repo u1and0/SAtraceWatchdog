@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """時系列ファイルのサマリーカウント"""
-from datetime import datetime
 from pathlib import Path
 from collections import Counter
 import yaml

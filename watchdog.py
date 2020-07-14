@@ -8,13 +8,14 @@ import argparse
 from time import sleep
 from datetime import datetime
 import glob
-import json
 import logging
 from logging import handlers
 from functools import partial
 from pathlib import Path
 from collections import namedtuple, defaultdict
+import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 from SAtraceWatchdog import tracer
 from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
@@ -26,7 +27,18 @@ ROOT = Path(__file__).parent
 
 
 class Watch:
-    """watchdog class"""
+    """Watch txt directory and png directory.
+    Exist txt file but png file, then make png file.
+    Exist txt file and png file, then ignore process.
+
+    # Process endless loop
+    ( start )<-+
+    =>parse()  |
+    =>loop()   |
+    =>sleep()--+
+    =>stop()
+    ( end )
+    """
     configfile = ROOT / 'config/config.json'
     # アップデートファイル保持
     config = None  # Watch.loop() の毎回のループで読み込み
@@ -73,6 +85,10 @@ class Watch:
         config.json を読み込み、
         config_keysに指定されたワードのみをConfigとして返す
         """
+        if not Path(Watch.configfile).exists():
+            Slack().log(self.log.error,
+                        f'設定ファイル {Watch.configfile} が存在しません',
+                        err=FileNotFoundError)
         config_dict = tracer.json_load_encode_with_bom(Watch.configfile)
         config_keys = [
             'check_rate',
@@ -80,8 +96,26 @@ class Watch:
             'marker',
             'transfer_rate',
             'usecols',
+            # oneplot.plot_onefile option *args, **kwargs
+            'color',
+            'linewidth',
+            'figsize',
+            'shownoise',
+            # oneplot.plot_onefile option
+            # xticks=np.linspace(config.min,config.max,xstep)
+            'xstep',
+            # oneplot.plot_onefile option
+            # yticks=np.linspace(ymin,ymax,ystep)
+            'ymin',
+            'ymax',
+            'ystep',
+            # tracer.Trace.heatmap() args
+            'cmap',
             'cmaphigh',
             'cmaplow',
+            'cmaplevel',
+            'cmapstep',
+            'slack_post',
         ]
         Config = namedtuple('Config', config_keys)
         authorized_config = Config(**{k: config_dict[k] for k in config_keys})
@@ -147,10 +181,6 @@ class Watch:
         """pngファイルの出力とログ出力の無限ループ"""
         # config file読込
         # ループごとに毎回jsonを読みに行く
-        if not Path(Watch.configfile).exists():
-            Slack().log(self.log.error,
-                        f'設定ファイル {Watch.configfile} が存在しません',
-                        err=FileNotFoundError)
         Watch.config = self.load_config()
         # 前回のconfigとことなる内容が読み込まれたらログに出力
         if not Watch.config == Watch.last_config:
@@ -189,9 +219,21 @@ class Watch:
         # One file plot
         # ---
         # txtファイルだけあってpngがないファイルに対して実行
+
         try:
             for base in update_files:
-                plot_onefile(base + '.txt', directory=self.directory)
+                plot_onefile(
+                    base + '.txt',
+                    directory=self.directory,
+                    color=Watch.config.color,
+                    linewidth=Watch.config.linewidth,
+                    figsize=Watch.config.figsize,
+                    shownoise=Watch.config.shownoise,
+                    xstep=Watch.config.xstep,
+                    ylim=(Watch.config.ymin, Watch.config.ymax),
+                    yticks=np.linspace(Watch.config.ymin, Watch.config.ymax,
+                                       Watch.config.ystep),
+                )
                 Slack().log(self.log.info,
                             f'画像の出力に成功しました {self.directory}/{base}.png')
                 # Reset count
@@ -222,9 +264,8 @@ class Watch:
                 files = glob.glob(f'{day}_*.txt')
                 if self.debug:
                     Slack().log(
-                        print,
-                        f'[DEBUG] {day}--LAST FILES-- {len(set(Watch.last_files[day]))}'
-                    )
+                        print, '[DEBUG] {}--LAST FILES-- {}'.format(
+                            day, len(set(Watch.last_files[day]))))
                     Slack().log(
                         print, f'[DEBUG] {day}--NOW FILES-- {len(set(files))}')
 
@@ -247,10 +288,14 @@ class Watch:
                     Slack().log(print, f'[DEBUG] length: {len(files)}')
                 filename = self.filename_resolver(yyyymmdd=day,
                                                   remove_flag=num_of_files_ok)
-                trss.heatmap(title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
-                             cmap='viridis',
-                             cmaphigh=Watch.config.cmaphigh,
-                             cmaplow=Watch.config.cmaplow)
+                trss.heatmap(
+                    title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
+                    cmap=Watch.config.cmap,
+                    cmaphigh=Watch.config.cmaphigh,
+                    cmaplow=Watch.config.cmaplow,
+                    cmaplevel=Watch.config.cmaplevel,
+                    cmapstep=Watch.config.cmapstep,
+                )
                 plt.savefig(filename)
                 # ファイルに保存するときplt.close()しないと
                 # 複数プロットが1pngファイルに表示される
@@ -272,7 +317,9 @@ class Watch:
         if self.debug:
             Slack().log(print,
                         f'[DEBUG] sleeping... {Watch.config.check_rate}')
-        sleep(Watch.config.check_rate)
+        # remove progress bar after all
+        for _ in tqdm(range(Watch.config.check_rate), leave=False):
+            sleep(1)
 
     def no_update_warning(self):
         """更新がしばらくないときにWarning上げる"""
@@ -332,12 +379,11 @@ def main():
     while True:
         try:
             watchdog.loop()
+            watchdog.sleep()
         except KeyboardInterrupt:
             watchdog.stop()
         except BaseException as _e:
             watchdog.error(_e)
-        else:
-            watchdog.sleep()
 
 
 if __name__ == '__main__':

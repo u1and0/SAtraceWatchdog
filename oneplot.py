@@ -38,6 +38,7 @@ for i in glob.glob('../data/*.txt')
 """
 from pathlib import Path
 import argparse
+import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from SAtraceWatchdog.tracer import read_trace, title_renamer, Trace
@@ -55,19 +56,34 @@ sns.set(style='whitegrid',
         })
 
 
-def plot_onefile(filename, directory=None, column='AVER'):
+def plot_onefile(
+        filename,
+        directory=None,
+        column='AVER',
+        color='gray',
+        linewidth=0.5,
+        figsize=(12, 8),
+        xstep=9,  # xstepはyと違ってデータの1行目のconfigから読む
+        shownoise=True,
+        *args,
+        **kwargs):
     """スペクトラムファイル1ファイルをプロットします。
     directoryが指定されてたら、その場所に同じベースネームでpng形式に保存します。
     """
     df = read_trace(filename)
     select = Trace(df[column])
-    ax = select.plot(color='gray',
-                     linewidth=0.5,
-                     figsize=(12, 8),
+    xticks = np.linspace(select.index[0], select.index[-1], xstep)
+    ax = select.plot(color=color,
+                     linewidth=linewidth,
+                     figsize=figsize,
                      title=title_renamer(filename),
-                     legend=False)
+                     legend=False,
+                     xticks=xticks,
+                     *args,
+                     **kwargs)
     select.plot_markers(ax=ax, legend=False)
-    select.plot_noisefloor()
+    if shownoise:
+        select.plot_noisefloor()
     if directory:
         base = Path(filename).stem
         plt.savefig(f'{directory}/{base}.png')
