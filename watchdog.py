@@ -26,7 +26,18 @@ ROOT = Path(__file__).parent
 
 
 class Watch:
-    """watchdog class"""
+    """Watch txt directory and png directory.
+    Exist txt file but png file, then make png file.
+    Exist txt file and png file, then ignore process.
+
+    # Process endless loop
+    ( start )<-+
+    =>parse()  |
+    =>loop()   |
+    =>sleep()--+
+    =>stop()
+    ( end )
+    """
     configfile = ROOT / 'config/config.json'
     # アップデートファイル保持
     config = None  # Watch.loop() の毎回のループで読み込み
@@ -73,6 +84,10 @@ class Watch:
         config.json を読み込み、
         config_keysに指定されたワードのみをConfigとして返す
         """
+        if not Path(Watch.configfile).exists():
+            Slack().log(self.log.error,
+                        f'設定ファイル {Watch.configfile} が存在しません',
+                        err=FileNotFoundError)
         config_dict = tracer.json_load_encode_with_bom(Watch.configfile)
         config_keys = [
             'check_rate',
@@ -82,6 +97,7 @@ class Watch:
             'usecols',
             'cmaphigh',
             'cmaplow',
+            'slack_post',
         ]
         Config = namedtuple('Config', config_keys)
         authorized_config = Config(**{k: config_dict[k] for k in config_keys})
@@ -147,15 +163,11 @@ class Watch:
         """pngファイルの出力とログ出力の無限ループ"""
         # config file読込
         # ループごとに毎回jsonを読みに行く
-        if not Path(Watch.configfile).exists():
-            slacklog(self.log.error,
-                     f'設定ファイル {Watch.configfile} が存在しません',
-                     err=FileNotFoundError)
         Watch.config = self.load_config()
         # 前回のconfigとことなる内容が読み込まれたらログに出力
         if not Watch.config == Watch.last_config:
             Watch.last_config = Watch.config
-            slacklog(self.log.info, f'設定が更新されました {Watch.config}')
+            Slack().log(self.log.info, f'設定が更新されました {Watch.config}')
 
         # ファイル名差分確認
         pattern = Watch.config.glob
@@ -169,7 +181,7 @@ class Watch:
             timestamps=(i[:8] for i in txts),  # 8 <= number of yyyymmdd
             filename=self.statsdirectory / 'watchdog_summary.yaml')
         if self.debug:
-            slacklog(print, f'[DEBUG] FILE COUNTS {_counts}')
+            Slack().log(print, f'[DEBUG] FILE COUNTS {_counts}')
 
         # SN report
         new_fileset = {
@@ -181,9 +193,9 @@ class Watch:
                                      usecols=Watch.config.usecols)
             sndf = trs.sntable(centers=sorted(Watch.config.marker), span=0.4)
             sndf = report.snreport(sndf, self.stats_file)
-            slacklog(self.log.info, f'S/N レポート{self.stats_file}を出力しました')
+            Slack().log(self.log.info, f'S/N レポート{self.stats_file}を出力しました')
             if self.debug:
-                slacklog(print, f'[DEBUG] Print S/N report\n{sndf}')
+                Slack().log(print, f'[DEBUG] Print S/N report\n{sndf}')
 
         # ---
         # One file plot
@@ -192,8 +204,8 @@ class Watch:
         try:
             for base in update_files:
                 plot_onefile(base + '.txt', directory=self.directory)
-                slacklog(self.log.info,
-                         f'画像の出力に成功しました {self.directory}/{base}.png')
+                Slack().log(self.log.info,
+                            f'画像の出力に成功しました {self.directory}/{base}.png')
                 # Reset count
                 Watch.no_update_count = 0
                 Watch.no_update_threshold = 2
@@ -209,7 +221,7 @@ class Watch:
             # filename format must be [ %Y%m%d_%H%M%S.txt ]
             days_set = {_[:8] for _ in txts}
             if self.debug:
-                slacklog(print, f'[DEBUG] day_set: {days_set}')
+                Slack().log(print, f'[DEBUG] day_set: {days_set}')
             # txts directory 内にある%Y%m%dのsetに対して実行
             for day in days_set:
                 # waterfall_{day}.pngが存在すれば最終処理が完了しているので
@@ -221,11 +233,11 @@ class Watch:
 
                 files = glob.glob(f'{day}_*.txt')
                 if self.debug:
-                    slacklog(
+                    Slack().log(
                         print, '[DEBUG] {}--LAST FILES-- {}'.format(
                             day, len(set(Watch.last_files[day]))))
-                    slacklog(print,
-                             f'[DEBUG] {day}--NOW FILES-- {len(set(files))}')
+                    Slack().log(
+                        print, f'[DEBUG] {day}--NOW FILES-- {len(set(files))}')
 
                 # waterfall_update.pngが存在して、
                 # かつ
@@ -242,8 +254,8 @@ class Watch:
                 _n = DAY_SECOND // Watch.config.transfer_rate  # => 288
                 num_of_files_ok = len(files) >= _n
                 if self.debug:
-                    slacklog(print, f'[DEBUG] limit: {_n}')
-                    slacklog(print, f'[DEBUG] length: {len(files)}')
+                    Slack().log(print, f'[DEBUG] limit: {_n}')
+                    Slack().log(print, f'[DEBUG] length: {len(files)}')
                 filename = self.filename_resolver(yyyymmdd=day,
                                                   remove_flag=num_of_files_ok)
                 trss.heatmap(title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
@@ -255,21 +267,22 @@ class Watch:
                 # 複数プロットが1pngファイルに表示される
                 plt.close()  # reset plot
                 # logdi = self.log.debug if self.debug else
-                slacklog(self.log.info, f'画像の出力に成功しました {filename}')
+                Slack().log(self.log.info, f'画像の出力に成功しました {filename}')
 
                 # データの抜けを検証"""
                 rate = '{}T'.format(Watch.config.transfer_rate // 60)
                 droped_data = trss.guess_fallout(rate=rate)
                 if any(droped_data):
-                    slacklog(self.log.warning, f'データが抜けています {droped_data}')
+                    Slack().log(self.log.warning, f'データが抜けています {droped_data}')
         except ValueError as e:
-            slacklog(self.log.error,
-                     f'{base}: {e}, txtファイルは送信されてきましたがデータが足りません')
+            Slack().log(self.log.error,
+                        f'{base}: {e}, txtファイルは送信されてきましたがデータが足りません')
 
     def sleep(self):
         """Interval for next loop"""
         if self.debug:
-            slacklog(print, f'[DEBUG] sleeping... {Watch.config.check_rate}')
+            Slack().log(print,
+                        f'[DEBUG] sleeping... {Watch.config.check_rate}')
         # remove progress bar after all
         for _ in tqdm(range(Watch.config.check_rate), leave=False):
             sleep(1)
@@ -284,25 +297,17 @@ class Watch:
         else:
             message = f'最後の更新から{no_uptime//3600}時'
         message += '間更新がありません。データの送信状況を確認してください。'
-        slacklog(self.log.warning, message)
+        Slack().log(self.log.warning, message)
 
     def stop(self):
         """Ctrl-CでWatch.loop()を正常終了する。"""
-        slacklog(self.log.info, 'キーボード入力により監視を正常終了しました。')
+        Slack().log(self.log.info, 'キーボード入力により監視を正常終了しました。')
         sys.exit(0)
 
     def error(self, err):
         """Tracebackをエラーに含める"""
         trace_error = partial(self.log.error, exc_info=True)
-        slacklog(trace_error, err)
-
-
-def slacklog(func, message, err=None):
-    """logging関数とSlack().message に同じメッセージを投げる"""
-    func(message)  # log.info(message), log.error(message), ...
-    Slack().message(message)
-    if err:
-        raise err
+        Slack().log(trace_error, err)
 
 
 def parse():
@@ -335,16 +340,16 @@ def main():
         print('SAtraceWatchdog ', VERSION)
         sys.exit(0)
     watchdog = Watch(args)
-    slacklog(watchdog.log.info, f'ディレクトリの監視を開始しました。 SAtraceWatchdog {VERSION}')
+    Slack().log(watchdog.log.info,
+                f'ディレクトリの監視を開始しました。 SAtraceWatchdog {VERSION}')
     while True:
         try:
             watchdog.loop()
+            watchdog.sleep()
         except KeyboardInterrupt:
             watchdog.stop()
         except BaseException as _e:
             watchdog.error(_e)
-        else:
-            watchdog.sleep()
 
 
 if __name__ == '__main__':

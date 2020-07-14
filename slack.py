@@ -12,9 +12,10 @@ CONFIG = json_load_encode_with_bom(CONFIGFILE)
 
 
 class Slack:
-    """slack instance"""
+    """Post info and error to slack channel"""
     token = CONFIG['token']
     channels = CONFIG['channel_id']
+    slack_post = CONFIG['slack_post']
 
     @classmethod
     def upload(cls, filename, message):
@@ -40,3 +41,12 @@ class Slack:
             "text": message,
         }
         requests.post(url, data=data)
+
+    @classmethod
+    def log(cls, func, message, err=None):
+        """logging関数とSlack().message に同じメッセージを投げる"""
+        func(message)  # log.info(message), log.error(message), ...
+        if cls.slack_post:
+            Slack().message(message)
+        if err:
+            raise err

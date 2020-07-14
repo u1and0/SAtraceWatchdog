@@ -6,5 +6,8 @@
     "marker":[132, 133.5, 141.2],
     "token":"xoxb-1126627157493-1072282577837-XC48bpp0hYczTHjlS7fhHI93",
     "transfer_rate":300,
-    "usecols":"AVER"
+    "usecols":"AVER",
+    "cmaphigh":200,
+    "cmaplow":100,
+    "slack_post":true
 }
