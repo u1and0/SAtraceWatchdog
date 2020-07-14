@@ -13,6 +13,7 @@ from logging import handlers
 from functools import partial
 from pathlib import Path
 from collections import namedtuple, defaultdict
+import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from SAtraceWatchdog import tracer
@@ -95,8 +96,25 @@ class Watch:
             'marker',
             'transfer_rate',
             'usecols',
+            # oneplot.plot_onefile option *args, **kwargs
+            'color',
+            'linewidth',
+            'figsize',
+            'shownoise',
+            # oneplot.plot_onefile option
+            # xticks=np.linspace(config.min,config.max,xstep)
+            'xstep',
+            # oneplot.plot_onefile option
+            # yticks=np.linspace(ymin,ymax,ystep)
+            'ymin',
+            'ymax',
+            'ystep',
+            # tracer.Trace.heatmap() args
+            'cmap',
             'cmaphigh',
             'cmaplow',
+            'cmaplevel',
+            'cmapstep',
             'slack_post',
         ]
         Config = namedtuple('Config', config_keys)
@@ -201,9 +219,21 @@ class Watch:
         # One file plot
         # ---
         # txtファイルだけあってpngがないファイルに対して実行
+
         try:
             for base in update_files:
-                plot_onefile(base + '.txt', directory=self.directory)
+                plot_onefile(
+                    base + '.txt',
+                    directory=self.directory,
+                    color=Watch.config.color,
+                    linewidth=Watch.config.linewidth,
+                    figsize=Watch.config.figsize,
+                    shownoise=Watch.config.shownoise,
+                    xstep=Watch.config.xstep,
+                    ylim=(Watch.config.ymin, Watch.config.ymax),
+                    yticks=np.linspace(Watch.config.ymin, Watch.config.ymax,
+                                       Watch.config.ystep),
+                )
                 Slack().log(self.log.info,
                             f'画像の出力に成功しました {self.directory}/{base}.png')
                 # Reset count
@@ -258,10 +288,14 @@ class Watch:
                     Slack().log(print, f'[DEBUG] length: {len(files)}')
                 filename = self.filename_resolver(yyyymmdd=day,
                                                   remove_flag=num_of_files_ok)
-                trss.heatmap(title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
-                             cmap='viridis',
-                             cmaphigh=Watch.config.cmaphigh,
-                             cmaplow=Watch.config.cmaplow)
+                trss.heatmap(
+                    title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
+                    cmap=Watch.config.cmap,
+                    cmaphigh=Watch.config.cmaphigh,
+                    cmaplow=Watch.config.cmaplow,
+                    cmaplevel=Watch.config.cmaplevel,
+                    cmapstep=Watch.config.cmapstep,
+                )
                 plt.savefig(filename)
                 # ファイルに保存するときplt.close()しないと
                 # 複数プロットが1pngファイルに表示される
