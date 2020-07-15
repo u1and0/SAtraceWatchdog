@@ -41,7 +41,7 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from SAtraceWatchdog.tracer import read_trace, title_renamer, Trace
+from SAtraceWatchdog.tracer import read_trace, title_renamer, Trace, crop_ticks
 
 # グラフ描画オプション
 sns.set(style='whitegrid',
@@ -65,6 +65,7 @@ def plot_onefile(
         figsize=(12, 8),
         xstep=9,  # xstepはyと違ってデータの1行目のconfigから読む
         shownoise=True,
+        xlabel=None,
         *args,
         **kwargs):
     """スペクトラムファイル1ファイルをプロットします。
@@ -72,7 +73,11 @@ def plot_onefile(
     """
     df = read_trace(filename)
     select = Trace(df[column])
+    # Generate number of xticks grid
     xticks = np.linspace(select.index[0], select.index[-1], xstep)
+    # rEplace None str keep number of xlabel
+    if xlabel is not None:
+        xticks = crop_ticks(xticks, xlabel, '')
     ax = select.plot(color=color,
                      linewidth=linewidth,
                      figsize=figsize,

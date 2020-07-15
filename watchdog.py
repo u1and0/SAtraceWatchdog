@@ -104,6 +104,7 @@ class Watch:
             # oneplot.plot_onefile option
             # xticks=np.linspace(config.min,config.max,xstep)
             'xstep',
+            'xlabel',
             # oneplot.plot_onefile option
             # yticks=np.linspace(ymin,ymax,ystep)
             'ymin',
@@ -229,6 +230,7 @@ class Watch:
                     figsize=Watch.config.figsize,
                     shownoise=Watch.config.shownoise,
                     xstep=Watch.config.xstep,
+                    xlabel=Watch.config.xlabel,
                     ylim=(Watch.config.ymin, Watch.config.ymax),
                     yticks=np.linspace(Watch.config.ymin, Watch.config.ymax,
                                        Watch.config.ystep),
