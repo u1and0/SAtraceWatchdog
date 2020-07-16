@@ -104,6 +104,7 @@ $ docker run -d \
 
 ## Update
 
+* v0.6.1          KeyboardInterruptで正常終了, FileNotFoundで異常終了, それ以外のエラーでsleepしてから再試行
 * v0.5.2          [add] try-finally watchdog.sleep()
 * v0.6.0          [add] slack flag, noise flag, Graph config tweek from JSON
 * v0.5.1          [fix] read_csv()=>read_excel() JSON read with/without BOM
