@@ -115,7 +115,6 @@ class Watch:
             'cmaplow',
             'cmaplevel',
             'cmapstep',
-            'slack_post',
         ]
         Config = namedtuple('Config', config_keys)
         authorized_config = Config(**{k: config_dict[k] for k in config_keys})
