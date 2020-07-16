@@ -50,7 +50,7 @@ def snreport(traces, filename):
             traces,
         ])
     traces.sort_index(inplace=True)
-    traces.to_excel(filename)  # Save file
+    traces.to_csv(filename)  # Save file
     return traces
 
 

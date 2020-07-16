@@ -59,7 +59,7 @@ class Watch:
             print(f'[DEBUG] PNG DIR: {self.directory}')
             print(f'[DEBUG] LOG DIR: {self.logdirectory}')
             print(f'[DEBUG] STATS DIR: {self.statsdirectory}')
-        self.stats_file = self.statsdirectory / 'watchdog_SN.xlsx'
+        self.stats_file = self.statsdirectory / 'watchdog_SN.csv'
         # loggerの設定
         self.set_logger()
         self.log = logging.getLogger(__name__)
