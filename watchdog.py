@@ -21,7 +21,7 @@ from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
 from SAtraceWatchdog import report
 
-VERSION = 'v0.5.2'
+VERSION = 'v0.6.1'
 DAY_SECOND = 60 * 60 * 24
 ROOT = Path(__file__).parent
 
@@ -307,9 +307,10 @@ class Watch:
                 droped_data = trss.guess_fallout(rate=rate)
                 if any(droped_data):
                     Slack().log(self.log.warning, f'データが抜けています {droped_data}')
-        except ValueError as e:
+        except ValueError as _e:
             Slack().log(self.log.error,
-                        f'{base}: {e}, txtファイルは送信されてきましたがデータが足りません')
+                        f'{base}: {_e}, txtファイルは送信されてきましたがデータが足りません',
+                        err=_e)
 
     def sleep(self):
         """Interval for next loop"""
@@ -378,11 +379,11 @@ def main():
     while True:
         try:
             watchdog.loop()
+            watchdog.sleep()
         except KeyboardInterrupt:
             watchdog.stop()
-        except BaseException as _e:
+        except BaseException as _e:  # エラー後sleep秒だけ待って再試行
             watchdog.error(_e)
-        finally:
             watchdog.sleep()
 
 
