@@ -21,7 +21,7 @@ from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
 from SAtraceWatchdog import report
 
-VERSION = 'v0.5.2'
+VERSION = 'v0.6.1'
 DAY_SECOND = 60 * 60 * 24
 ROOT = Path(__file__).parent
 
@@ -86,9 +86,7 @@ class Watch:
         config_keysに指定されたワードのみをConfigとして返す
         """
         if not Path(Watch.configfile).exists():
-            Slack().log(self.log.error,
-                        f'設定ファイル {Watch.configfile} が存在しません',
-                        err=FileNotFoundError)
+            raise FileNotFoundError(f'設定ファイル {Watch.configfile} が存在しません')
         config_dict = tracer.json_load_encode_with_bom(Watch.configfile)
         config_keys = [
             'check_rate',
@@ -307,9 +305,10 @@ class Watch:
                 droped_data = trss.guess_fallout(rate=rate)
                 if any(droped_data):
                     Slack().log(self.log.warning, f'データが抜けています {droped_data}')
-        except ValueError as e:
+        except ValueError as _e:
             Slack().log(self.log.error,
-                        f'{base}: {e}, txtファイルは送信されてきましたがデータが足りません')
+                        f'{base}: {_e}, txtファイルは送信されてきましたがデータが足りません',
+                        err=_e)
 
     def sleep(self):
         """Interval for next loop"""
@@ -332,10 +331,15 @@ class Watch:
         message += '間更新がありません。データの送信状況を確認してください。'
         Slack().log(self.log.warning, message)
 
-    def stop(self):
-        """Ctrl-CでWatch.loop()を正常終了する。"""
-        Slack().log(self.log.info, 'キーボード入力により監視を正常終了しました。')
-        sys.exit(0)
+    def stop(self, status: int, err):
+        """status=0でWatch.loop()を正常終了する。
+        status=1でWatch.loop()を異常終了する。
+        """
+        if status == 0:
+            Slack().log(self.log.info, message=err)
+        else:
+            Slack().log(self.log.critical, message=err)
+        sys.exit(status)
 
     def error(self, err):
         """Tracebackをエラーに含める"""
@@ -378,11 +382,13 @@ def main():
     while True:
         try:
             watchdog.loop()
+            watchdog.sleep()
         except KeyboardInterrupt:
-            watchdog.stop()
-        except BaseException as _e:
+            watchdog.stop(0, 'キーボード入力により監視を正常終了しました。')
+        except FileNotFoundError as _e:
+            watchdog.stop(1, _e)
+        except BaseException as _e:  # それ以外のエラーはエラー後sleep秒だけ待って再試行
             watchdog.error(_e)
-        finally:
             watchdog.sleep()
 
 
