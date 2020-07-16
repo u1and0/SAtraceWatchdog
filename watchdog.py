@@ -21,7 +21,7 @@ from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
 from SAtraceWatchdog import report
 
-VERSION = 'v0.5.1'
+VERSION = 'v0.5.2'
 DAY_SECOND = 60 * 60 * 24
 ROOT = Path(__file__).parent
 
@@ -379,11 +379,12 @@ def main():
     while True:
         try:
             watchdog.loop()
-            watchdog.sleep()
         except KeyboardInterrupt:
             watchdog.stop()
         except BaseException as _e:
             watchdog.error(_e)
+        finally:
+            watchdog.sleep()
 
 
 if __name__ == '__main__':
