@@ -86,9 +86,7 @@ class Watch:
         config_keysに指定されたワードのみをConfigとして返す
         """
         if not Path(Watch.configfile).exists():
-            Slack().log(self.log.error,
-                        f'設定ファイル {Watch.configfile} が存在しません',
-                        err=FileNotFoundError)
+            raise FileNotFoundError(f'設定ファイル {Watch.configfile} が存在しません')
         config_dict = tracer.json_load_encode_with_bom(Watch.configfile)
         config_keys = [
             'check_rate',
@@ -333,10 +331,15 @@ class Watch:
         message += '間更新がありません。データの送信状況を確認してください。'
         Slack().log(self.log.warning, message)
 
-    def stop(self):
-        """Ctrl-CでWatch.loop()を正常終了する。"""
-        Slack().log(self.log.info, 'キーボード入力により監視を正常終了しました。')
-        sys.exit(0)
+    def stop(self, status: int, err):
+        """status=0でWatch.loop()を正常終了する。
+        status=1でWatch.loop()を異常終了する。
+        """
+        if status == 0:
+            Slack().log(self.log.info, message=err)
+        else:
+            Slack().log(self.log.critical, message=err)
+        sys.exit(status)
 
     def error(self, err):
         """Tracebackをエラーに含める"""
@@ -381,8 +384,10 @@ def main():
             watchdog.loop()
             watchdog.sleep()
         except KeyboardInterrupt:
-            watchdog.stop()
-        except BaseException as _e:  # エラー後sleep秒だけ待って再試行
+            watchdog.stop(0, 'キーボード入力により監視を正常終了しました。')
+        except FileNotFoundError as _e:
+            watchdog.stop(1, _e)
+        except BaseException as _e:  # それ以外のエラーはエラー後sleep秒だけ待って再試行
             watchdog.error(_e)
             watchdog.sleep()
 
