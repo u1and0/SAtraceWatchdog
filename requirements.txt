@@ -3,6 +3,4 @@ matplotlib
 seaborn
 requests
 pyyaml
-openpyxl
-xlrd
 tqdm
