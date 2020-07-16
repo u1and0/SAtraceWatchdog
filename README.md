@@ -87,7 +87,11 @@ $ docker run -d \
 
 ### エラー通知
 * slack botを使用してエラーメッセージなどをslackへ通知します。
-* 設定ファイルはconfig/config.jsonを参照してください。
+* slack通知の挙動をconfig/config.jsonから制御できます。制御できる内容は下記参照。
+  * slackトークン
+  * slackチャネルID
+  * slack通知の有効無効
+* configはSAtraceWatchdog起動時(slackモジュールインポート時)に一度だけ読み込まれます。
 
 ### サマリー
 * statsディレクトリに日にちごとのデータファイルカウントの結果を出力します。
@@ -99,6 +103,8 @@ $ docker run -d \
 
 
 ## Update
+
+* v0.5.2          [add] try-finally watchdog.sleep()
 * v0.6.0          [add] slack flag, noise flag, Graph config tweek from JSON
 * v0.5.1          [fix] read_csv()=>read_excel() JSON read with/without BOM
 * v0.5.0          [add] SN report xlsx, read_conf() from any TRACE columns data, show progress bar
