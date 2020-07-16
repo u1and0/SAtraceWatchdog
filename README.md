@@ -99,11 +99,12 @@ $ docker run -d \
 > (例) '20151111': 7, '20161108': 12
 > 2015年11月11日に7ファイル、2016年11月08日に12ファイルが出力されたことを示します。
 * 一行に各時間に対するconfigファイルに記されたマーカーの±0.2kHz範囲のdB平均値を表にします。
-* ファイル名: `watchdog_SN.xlsx`
+* ファイル名: `watchdog_SN.csv`
 
 
 ## Update
 
+* v0.6.2          Use CSV file not XLSX file because of BadZipfile: Bad CRC-32 problem
 * v0.6.1          KeyboardInterruptで正常終了, FileNotFoundで異常終了, それ以外のエラーでsleepしてから再試行
 * v0.5.2          [add] try-finally watchdog.sleep()
 * v0.6.0          [add] slack flag, noise flag, Graph config tweek from JSON
