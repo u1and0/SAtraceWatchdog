@@ -34,7 +34,7 @@ def newindex(reportfile, fileset: set):
     if Path(reportfile).exists():
         # indexのみ必要
         # あとでstrftime()するためにparse_dateオプションあり
-        idx = pd.read_csv(reportfile, usecols=[0], parse_dates=[0]).squeeze()
+        idx = pd.read_excel(reportfile, usecols=[0], parse_dates=[0]).squeeze()
         old_fileset = {i.strftime('%Y%m%d_%H%M%S') for i in idx}
         fileset -= old_fileset
     return fileset
@@ -46,11 +46,11 @@ def snreport(traces, filename):
     """
     if Path(filename).exists():
         traces = pd.concat([  # Concat [olddata, newdata]
-            pd.read_csv(filename, index_col=0, parse_dates=True),
+            pd.read_excel(filename, index_col=0, parse_dates=True),
             traces,
         ])
     traces.sort_index(inplace=True)
-    traces.to_csv(filename)  # Save file
+    traces.to_excel(filename)  # Save file
     return traces
 
 
