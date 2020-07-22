@@ -104,6 +104,9 @@ $ docker run -d \
 
 ## Update
 
+* v0.6.4          データが空のときにtrace.plot_noisefloor()で発生するZeroDivisionErrorを回避
+* v0.6.3          v0.6.1のようにstatsファイルをexcelファイルを扱うようにRevert
+* v0.6.2          statsファイルをcsvで扱うように変更
 * v0.6.1          KeyboardInterruptで正常終了, FileNotFoundで異常終了, それ以外のエラーでsleepしてから再試行
 * v0.5.2          [add] try-finally watchdog.sleep()
 * v0.6.0          [add] slack flag, noise flag, Graph config tweek from JSON
