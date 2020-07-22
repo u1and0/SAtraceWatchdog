@@ -21,7 +21,7 @@ from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
 from SAtraceWatchdog import report
 
-VERSION = 'v0.6.1'
+VERSION = 'v0.6.4'
 DAY_SECOND = 60 * 60 * 24
 ROOT = Path(__file__).parent
 
@@ -217,8 +217,8 @@ class Watch:
         # ---
         # txtファイルだけあってpngがないファイルに対して実行
 
-        try:
-            for base in update_files:
+        for base in update_files:
+            try:
                 plot_onefile(
                     base + '.txt',
                     directory=self.directory,
@@ -231,84 +231,84 @@ class Watch:
                     yticks=np.linspace(Watch.config.ymin, Watch.config.ymax,
                                        Watch.config.ystep),
                 )
-                Slack().log(self.log.info,
-                            f'画像の出力に成功しました {self.directory}/{base}.png')
-                # Reset count
-                Watch.no_update_count = 0
-                Watch.no_update_threshold = 2
-            else:  # update_filesが空で、更新がないとき
-                Watch.no_update_count += 1
-                if Watch.no_update_count > Watch.no_update_threshold:
-                    self.no_update_warning()
-                    Watch.no_update_threshold *= 2
+            except ZeroDivisionError as _e:
+                Slack().log(self.log.warning,
+                            f'{base}: {_e}, txtファイルは送信されてきましたがデータが足りません')
+                continue
+            Slack().log(self.log.info,
+                        f'画像の出力に成功しました {self.directory}/{base}.png')
+            # Reset count
+            Watch.no_update_count = 0
+            Watch.no_update_threshold = 2
+        else:  # update_filesが空で、更新がないとき
+            Watch.no_update_count += 1
+            if Watch.no_update_count > Watch.no_update_threshold:
+                self.no_update_warning()
+                Watch.no_update_threshold *= 2
 
-            # ---
-            # Daily plot
-            # ---
-            # filename format must be [ %Y%m%d_%H%M%S.txt ]
-            days_set = {_[:8] for _ in txts}
+        # ---
+        # Daily plot
+        # ---
+        # filename format must be [ %Y%m%d_%H%M%S.txt ]
+        days_set = {_[:8] for _ in txts}
+        if self.debug:
+            Slack().log(print, f'[DEBUG] day_set: {days_set}')
+        # txts directory 内にある%Y%m%dのsetに対して実行
+        for day in days_set:
+            # waterfall_{day}.pngが存在すれば最終処理が完了しているので
+            # waterfallをプロットしない -> 次のfor iterへ行く
+            if Path(f'{self.directory}/waterfall_{day}.png').exists():
+                continue
+            # waterfall_{day}.pngが存在しなければ最終処理が完了していないので
+            # waterfalll_{day}_update.pngを作成する
+
+            files = glob.glob(f'{day}_*.txt')
             if self.debug:
-                Slack().log(print, f'[DEBUG] day_set: {days_set}')
-            # txts directory 内にある%Y%m%dのsetに対して実行
-            for day in days_set:
-                # waterfall_{day}.pngが存在すれば最終処理が完了しているので
-                # waterfallをプロットしない -> 次のfor iterへ行く
-                if Path(f'{self.directory}/waterfall_{day}.png').exists():
-                    continue
-                # waterfall_{day}.pngが存在しなければ最終処理が完了していないので
-                # waterfalll_{day}_update.pngを作成する
+                Slack().log(
+                    print, '[DEBUG] {}--LAST FILES-- {}'.format(
+                        day, len(set(Watch.last_files[day]))))
+                Slack().log(print,
+                            f'[DEBUG] {day}--NOW FILES-- {len(set(files))}')
 
-                files = glob.glob(f'{day}_*.txt')
-                if self.debug:
-                    Slack().log(
-                        print, '[DEBUG] {}--LAST FILES-- {}'.format(
-                            day, len(set(Watch.last_files[day]))))
-                    Slack().log(
-                        print, f'[DEBUG] {day}--NOW FILES-- {len(set(files))}')
+            # waterfall_update.pngが存在して、
+            # かつ
+            # ファイルに更新がなければ次のfor iterへ行く
+            noupdate = set(Watch.last_files[day]) == set(files)
+            exists = Path(
+                f'{self.directory}/waterfall_{day}_update.png').exists()
+            if exists and noupdate:
+                continue
+            Watch.last_files[day] = files
 
-                # waterfall_update.pngが存在して、
-                # かつ
-                # ファイルに更新がなければ次のfor iterへ行く
-                noupdate = set(Watch.last_files[day]) == set(files)
-                exists = Path(
-                    f'{self.directory}/waterfall_{day}_update.png').exists()
-                if exists and noupdate:
-                    continue
-                Watch.last_files[day] = files
+            # ファイルに更新があれば更新したwaterfall_update.pngを出力
+            trss = tracer.read_traces(*files, usecols=Watch.config.usecols)
+            _n = DAY_SECOND // Watch.config.transfer_rate  # => 288
+            num_of_files_ok = len(files) >= _n
+            if self.debug:
+                Slack().log(print, f'[DEBUG] limit: {_n}')
+                Slack().log(print, f'[DEBUG] length: {len(files)}')
+            filename = self.filename_resolver(yyyymmdd=day,
+                                              remove_flag=num_of_files_ok)
+            trss.heatmap(
+                title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
+                cmap=Watch.config.cmap,
+                cmaphigh=Watch.config.cmaphigh,
+                cmaplow=Watch.config.cmaplow,
+                cmaplevel=Watch.config.cmaplevel,
+                cmapstep=Watch.config.cmapstep,
+            )
+            plt.savefig(filename)
+            # ファイルに保存するときplt.close()しないと
+            # 複数プロットが1pngファイルに表示される
+            plt.close()  # reset plot
+            # logdi = self.log.debug if self.debug else
+            Slack().log(self.log.info, f'画像の出力に成功しました {filename}')
 
-                # ファイルに更新があれば更新したwaterfall_update.pngを出力
-                trss = tracer.read_traces(*files, usecols=Watch.config.usecols)
-                _n = DAY_SECOND // Watch.config.transfer_rate  # => 288
-                num_of_files_ok = len(files) >= _n
-                if self.debug:
-                    Slack().log(print, f'[DEBUG] limit: {_n}')
-                    Slack().log(print, f'[DEBUG] length: {len(files)}')
-                filename = self.filename_resolver(yyyymmdd=day,
-                                                  remove_flag=num_of_files_ok)
-                trss.heatmap(
-                    title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
-                    cmap=Watch.config.cmap,
-                    cmaphigh=Watch.config.cmaphigh,
-                    cmaplow=Watch.config.cmaplow,
-                    cmaplevel=Watch.config.cmaplevel,
-                    cmapstep=Watch.config.cmapstep,
-                )
-                plt.savefig(filename)
-                # ファイルに保存するときplt.close()しないと
-                # 複数プロットが1pngファイルに表示される
-                plt.close()  # reset plot
-                # logdi = self.log.debug if self.debug else
-                Slack().log(self.log.info, f'画像の出力に成功しました {filename}')
-
-                # データの抜けを検証"""
-                rate = '{}T'.format(Watch.config.transfer_rate // 60)
-                droped_data = trss.guess_fallout(rate=rate)
-                if any(droped_data):
-                    Slack().log(self.log.warning, f'データが抜けています {droped_data}')
-        except ValueError as _e:
-            Slack().log(self.log.error,
-                        f'{base}: {_e}, txtファイルは送信されてきましたがデータが足りません',
-                        err=_e)
+            # データの抜けを検証"""
+            rate = '{}T'.format(Watch.config.transfer_rate // 60)
+            droped_data = trss.guess_fallout(rate=rate)
+            if any(droped_data):
+                Slack().log(self.log.warning, f'データが抜けています {droped_data}')
 
     def sleep(self):
         """Interval for next loop"""
