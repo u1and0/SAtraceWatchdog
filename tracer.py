@@ -205,7 +205,7 @@ class Trace(pd.DataFrame):
         0.8   8  18  28
         0.9   9  19  29
         1.0  10  20  30
-        >>> # trs.bandsignal returns dB mean of index 0.4~0.6
+        >>> # trs.bandsignal returns dB sum of index 0.4~0.6
         >>> trs.bandsignal(center=0.5, span=0.2)
         a     6.410678
         b    16.410678
@@ -214,7 +214,7 @@ class Trace(pd.DataFrame):
         >>> # RuntimeWarning: divide by zero encountered in log10
         """
         df = self.reindex(self.marker).loc[center - span / 2:center + span / 2]
-        return df.db2mw().mean().mw2db()
+        return df.db2mw().sum().mw2db()
 
     def sntable(self, centers: list, span: float):
         """ centers周りのbandsignal平均値とnoisefloorのテーブルを返す
