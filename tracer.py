@@ -168,16 +168,44 @@ def fine_ticks(tick, deg):
                        int((tick.max() - tick.min()) / deg + 1))
 
 
-def crop_ticks(arr, x: int, y):
-    """リストarrからx個だけ値を残して残りはyに置きかえる
-    arr: list-like
-    x  : int
+def crop_ticks(arr, tick, span):
+    """ tickごとに連なるリストarrからspanごとに値を残して
+    残りは空白文字''に置きかえる
+    * arr: array like
+    * tick: minimum substance between `arr`
+    * span: keep `span` frequency
+    >>> arr = np.arange(53, 55.05, 0.05)
+    >>> arr
+    array([53.  , 53.05, 53.1 , 53.15, 53.2 , 53.25, 53.3 , 53.35, 53.4 ,
+           53.45, 53.5 , 53.55, 53.6 , 53.65, 53.7 , 53.75, 53.8 , 53.85,
+           53.9 , 53.95, 54.  , 54.05, 54.1 , 54.15, 54.2 , 54.25, 54.3 ,
+           54.35, 54.4 , 54.45, 54.5 , 54.55, 54.6 , 54.65, 54.7 , 54.75,
+           54.8 , 54.85, 54.9 , 54.95, 55.  ])
+    >>> crop_ticks(arr, 0.05, 1)
+    array(['53.0', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
+           '', '', '', '', '53.99999999999994', '', '', '', '', '', '', '',
+           '', '', '', '', '', '', '', '', '', '', '', '',
+           '54.999999999999886'], dtype='<U32')
+    >>> crop_ticks(arr, 0.05, 0.5)
+    array(['53.0', '', '', '', '', '', '', '', '', '', '53.49999999999997',
+           '', '', '', '', '', '', '', '', '', '53.99999999999994', '', '',
+           '', '', '', '', '', '', '', '54.499999999999915', '', '', '', '',
+           '', '', '', '', '', '54.999999999999886'], dtype='<U32')
+    >>> crop_ticks(arr, 0.05, 0.1)
+    array(['53.0', '', '53.099999999999994', '', '53.19999999999999', '',
+           '53.29999999999998', '', '53.39999999999998', '',
+           '53.49999999999997', '', '53.599999999999966', '',
+           '53.69999999999996', '', '53.799999999999955', '',
+           '53.89999999999995', '', '53.99999999999994', '',
+           '54.09999999999994', '', '54.19999999999993', '',
+           '54.299999999999926', '', '54.39999999999992', '',
+           '54.499999999999915', '', '54.59999999999991', '',
+           '54.6999999999999', '', '54.7999999999999', '',
+           '54.89999999999989', '', '54.999999999999886'], dtype='<U32')
     """
-    crop = len(arr) // (x - 1)
-    keep = arr[::crop]
-    arr = [y for _ in arr]
-    arr[::crop] = keep
-    return arr
+    keep = [v for k, v in enumerate(arr) if k % (span / tick) == 0]
+    non_char_exclusive_keep = [k if k in keep else '' for k in arr]
+    return non_char_exclusive_keep
 
 
 class Trace(pd.DataFrame):
@@ -202,32 +230,29 @@ class Trace(pd.DataFrame):
 
     def bandsignal(self, center, span):
         """centerから±spanのindexに対してのデシベル平均を返す
-        >>> aa = np.arange(1, 31).reshape(3, -1).T
+        >>> aa = np.arange(1, 11).T
         >>> index = np.linspace(0.1, 1, 10)
-        >>> trs = Trace(aa, index=index, columns=list('abc'))
+        >>> trs = Trace(aa, index=index, columns=['a'])
         >>> trs
-              a   b   c
-        0.1   1  11  21
-        0.2   2  12  22
-        0.3   3  13  23
-        0.4   4  14  24
-        0.5   5  15  25
-        0.6   6  16  26
-        0.7   7  17  27
-        0.8   8  18  28
-        0.9   9  19  29
-        1.0  10  20  30
+              a
+        0.1   1
+        0.2   2
+        0.3   3
+        0.4   4
+        0.5   5
+        0.6   6
+        0.7   7
+        0.8   8
+        0.9   9
+        1.0  10
         >>> # trs.bandsignal returns dB sum of index 0.4~0.6
         >>> trs.bandsignal(center=0.5, span=0.2)
-        a     6.410678
-        b    16.410678
-        c    26.410678
+        a    9.655236
         dtype: float64
         >>> # RuntimeWarning: divide by zero encountered in log10
         """
-        df = self.reindex(self.marker).loc[center - span / 2:center + span / 2]
-        return df.db2mw().sum().mw2db()
-
+        df = self.loc[center - span / 2:center + span / 2]
+        return df.db2mw().sum()
 
     def heatmap(self,
                 title,
