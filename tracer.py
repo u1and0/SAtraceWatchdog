@@ -168,6 +168,18 @@ def fine_ticks(tick, deg):
                        int((tick.max() - tick.min()) / deg + 1))
 
 
+def crop_ticks(arr, x: int, y):
+    """リストarrからx個だけ値を残して残りはyに置きかえる
+    arr: list-like
+    x  : int
+    """
+    crop = len(arr) // (x - 1)
+    keep = arr[::crop]
+    arr = [y for _ in arr]
+    arr[::crop] = keep
+    return arr
+
+
 class Trace(pd.DataFrame):
     """pd.DataFrameのように扱えるTraceクラス"""
     # marker設定
