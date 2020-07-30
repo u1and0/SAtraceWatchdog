@@ -55,6 +55,8 @@ sns.set(style='whitegrid',
             'image.cmap': 'viridis'
         })
 
+TICK = 0.005  # data4 only
+
 
 def plot_onefile(
         filename,
@@ -63,7 +65,7 @@ def plot_onefile(
         color='gray',
         linewidth=0.5,
         figsize=(12, 8),
-        xstep=9,  # xstepはyと違ってデータの1行目のconfigから読む
+        xstep=None,  # xstepはyと違ってデータの1行目のconfigから読む
         shownoise=True,
         xlabel=None,
         *args,
@@ -73,19 +75,17 @@ def plot_onefile(
     """
     df = read_trace(filename)
     select = Trace(df[column])
-    # Generate number of xticks grid
-    xticks = np.linspace(select.index[0], select.index[-1], xstep)
-    # rEplace None str keep number of xlabel
-    if xlabel is not None:
-        xticks = crop_ticks(xticks, xlabel, '')
     ax = select.plot(color=color,
                      linewidth=linewidth,
                      figsize=figsize,
                      title=title_renamer(filename),
                      legend=False,
-                     xticks=xticks,
                      *args,
                      **kwargs)
+    # Generate number of xticks grid
+    if xstep is not None:
+        locs, label = df.index, crop_ticks(df.index, TICK, xstep)
+        plt.xticks(locs, label)
     select.plot_markers(ax=ax, legend=False)
     if shownoise:
         select.plot_noisefloor()
