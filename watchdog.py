@@ -21,7 +21,7 @@ from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
 from SAtraceWatchdog import report
 
-VERSION = 'v0.6.5'
+VERSION = 'v0.6.6'
 DAY_SECOND = 60 * 60 * 24
 ROOT = Path(__file__).parent
 
@@ -197,20 +197,6 @@ class Watch:
             filename=self.statsdirectory / 'watchdog_summary.yaml')
         if self.debug:
             Slack().log(print, f'[DEBUG] FILE COUNTS {_counts}')
-
-        # SN report
-        new_fileset = {
-            i + '.txt'
-            for i in report.newindex(self.stats_file, copy.copy(txts))
-        }
-        if new_fileset:
-            trs = tracer.read_traces(*new_fileset,
-                                     usecols=Watch.config.usecols)
-            sndf = trs.sntable(centers=sorted(Watch.config.marker), span=0.4)
-            sndf = report.snreport(sndf, self.stats_file)
-            Slack().log(self.log.info, f'S/N レポート{self.stats_file}を出力しました')
-            if self.debug:
-                Slack().log(print, f'[DEBUG] Print S/N report\n{sndf}')
 
         # ---
         # One file plot

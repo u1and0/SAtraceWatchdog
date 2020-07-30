@@ -216,21 +216,6 @@ class Trace(pd.DataFrame):
         df = self.reindex(self.marker).loc[center - span / 2:center + span / 2]
         return df.db2mw().sum().mw2db()
 
-    def sntable(self, centers: list, span: float):
-        """ centers周りのbandsignal平均値とnoisefloorのテーブルを返す
-        return such DataFrame
-                       | 56 span 0.4 signal | 57 span 0.4 signal | noisefloor |
-        ---------------|--------------------|--------------------|------------|
-        2020/5/31 8:59 | -58                | -60                | -54        |
-        2020/5/31 9:04 | -56                | -60                | -60        |
-        2020/5/31 9:09 | -60                | -66                | -64        |
-        """
-        df = pd.DataFrame({
-            f'{i} span {span} signal': self.bandsignal(i, span)
-            for i in centers
-        })
-        df['noisefloor'] = self.noisefloor()
-        return df
 
     def heatmap(self,
                 title,
