@@ -26,34 +26,6 @@ def timestamp_count(timestamps, filename):
     return count
 
 
-def newindex(reportfile, fileset: set):
-    """古いreportfile内のdatetimeインデックスから
-    現在のファイルセットから解析済みファイルセットを差し引いた
-    ファイルセットを返す
-    """
-    if Path(reportfile).exists():
-        # indexのみ必要
-        # あとでstrftime()するためにparse_dateオプションあり
-        idx = pd.read_excel(reportfile, usecols=[0], parse_dates=[0]).squeeze()
-        old_fileset = {i.strftime('%Y%m%d_%H%M%S') for i in idx}
-        fileset -= old_fileset
-    return fileset
-
-
-def snreport(traces, filename):
-    """S/N を算出したtracesをexcelファイルに保存する。
-    古いexcelファイルがあれば統合して、上書き保存する。
-    """
-    if Path(filename).exists():
-        traces = pd.concat([  # Concat [olddata, newdata]
-            pd.read_excel(filename, index_col=0, parse_dates=True),
-            traces,
-        ])
-    traces.sort_index(inplace=True)
-    traces.to_excel(filename)  # Save file
-    return traces
-
-
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
