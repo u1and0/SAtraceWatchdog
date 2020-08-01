@@ -100,9 +100,10 @@ class Watch:
             'figsize',
             'shownoise',
             # oneplot.plot_onefile option
-            # xticks=np.linspace(config.min,config.max,xstep)
-            'xstep',
-            'xlabel',
+            # locs, labels = tracer.crop_ticks(xticks, xgrids, xlabels)
+            'xticks',  # xticks:x軸最小幅
+            'xgrids',  # xgrids:x軸に引く補助線の間隔
+            'xlabels',  # xlabels:x軸に入れるラベルの間隔
             # oneplot.plot_onefile option
             # yticks=np.linspace(ymin,ymax,ystep)
             'ymin',
@@ -213,11 +214,20 @@ class Watch:
                     linewidth=Watch.config.linewidth,
                     figsize=Watch.config.figsize,
                     shownoise=Watch.config.shownoise,
-                    xstep=Watch.config.xstep,
-                    xlabel=Watch.config.xlabel,
-                    ylim=(Watch.config.ymin, Watch.config.ymax),
-                    yticks=np.linspace(Watch.config.ymin, Watch.config.ymax,
-                                       Watch.config.ystep),
+                    xticks=(
+                        Watch.config.xticks,
+                        Watch.config.xgrids,
+                        Watch.config.xlabels,
+                    ),
+                    ylim=(
+                        Watch.config.ymin,
+                        Watch.config.ymax,
+                    ),
+                    yticks=np.arange(
+                        Watch.config.ymin,
+                        Watch.config.ymax + Watch.config.ystep,
+                        Watch.config.ystep,
+                    ),
                 )
             except ZeroDivisionError as _e:
                 Slack().log(self.log.warning,

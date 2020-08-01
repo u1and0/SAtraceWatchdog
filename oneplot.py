@@ -55,26 +55,24 @@ sns.set(style='whitegrid',
             'image.cmap': 'viridis'
         })
 
-TICK = 0.005  # data4 only
 
-
-def plot_onefile(
-        filename,
-        directory=None,
-        column='AVER',
-        color='gray',
-        linewidth=0.5,
-        figsize=(12, 8),
-        xstep=None,  # xstepはyと違ってデータの1行目のconfigから読む
-        shownoise=True,
-        xlabel=None,
-        *args,
-        **kwargs):
+def plot_onefile(filename,
+                 directory=None,
+                 column='AVER',
+                 color='gray',
+                 linewidth=0.5,
+                 figsize=(12, 8),
+                 shownoise=True,
+                 xticks=None,
+                 *args,
+                 **kwargs):
     """スペクトラムファイル1ファイルをプロットします。
     directoryが指定されてたら、その場所に同じベースネームでpng形式に保存します。
     """
     df = read_trace(filename)
     select = Trace(df[column])
+
+    # Base chart
     ax = select.plot(color=color,
                      linewidth=linewidth,
                      figsize=figsize,
@@ -82,10 +80,14 @@ def plot_onefile(
                      legend=False,
                      *args,
                      **kwargs)
-    # Generate number of xticks grid
-    if xstep is not None:
-        locs, label = df.index, crop_ticks(df.index, TICK, xstep)
-        plt.xticks(locs, label)
+
+    # Generate array of grid & label
+    # xticks is a tuple of arg for tracer.crop_ticks()
+    # xticks = (tick, minorticks, majorticks)
+    if xticks is not None:
+        locs, labels = crop_ticks(df.index, *xticks)
+        plt.xticks(locs, labels)
+
     select.plot_markers(ax=ax, legend=False)
     if shownoise:
         select.plot_noisefloor()
