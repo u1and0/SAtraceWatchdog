@@ -168,44 +168,48 @@ def fine_ticks(tick, deg):
                        int((tick.max() - tick.min()) / deg + 1))
 
 
-def crop_ticks(arr, tick, span):
-    """ tickごとに連なるリストarrからspanごとに値を残して
-    残りは空白文字''に置きかえる
+def crop_ticks(arr, tick, minorticks, majorticks):
+    """ tickごとに連なるリストarrから
+    minorticksごとにgrid線を引き
+    majorticksごとにlabelsを返す
+
+    majorticksごとに値を残したlabelsは文字列リスト(np.array)
+    残す値以外は空白文字''に置きかえる
+
     * arr: array like
     * tick: minimum substance between `arr`
-    * span: keep `span` frequency
-    >>> arr = np.arange(53, 55.05, 0.05)
+    * minorticks: keep `majorticks` frequency
+    * majorticks: keep `majorticks` frequency
+
+    >>> arr = np.linspace(53,55,41)
     >>> arr
     array([53.  , 53.05, 53.1 , 53.15, 53.2 , 53.25, 53.3 , 53.35, 53.4 ,
            53.45, 53.5 , 53.55, 53.6 , 53.65, 53.7 , 53.75, 53.8 , 53.85,
            53.9 , 53.95, 54.  , 54.05, 54.1 , 54.15, 54.2 , 54.25, 54.3 ,
            54.35, 54.4 , 54.45, 54.5 , 54.55, 54.6 , 54.65, 54.7 , 54.75,
            54.8 , 54.85, 54.9 , 54.95, 55.  ])
-    >>> crop_ticks(arr, 0.05, 1)
-    array(['53.0', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
-           '', '', '', '', '53.99999999999994', '', '', '', '', '', '', '',
-           '', '', '', '', '', '', '', '', '', '', '', '',
-           '54.999999999999886'], dtype='<U32')
-    >>> crop_ticks(arr, 0.05, 0.5)
-    array(['53.0', '', '', '', '', '', '', '', '', '', '53.49999999999997',
-           '', '', '', '', '', '', '', '', '', '53.99999999999994', '', '',
-           '', '', '', '', '', '', '', '54.499999999999915', '', '', '', '',
-           '', '', '', '', '', '54.999999999999886'], dtype='<U32')
-    >>> crop_ticks(arr, 0.05, 0.1)
-    array(['53.0', '', '53.099999999999994', '', '53.19999999999999', '',
-           '53.29999999999998', '', '53.39999999999998', '',
-           '53.49999999999997', '', '53.599999999999966', '',
-           '53.69999999999996', '', '53.799999999999955', '',
-           '53.89999999999995', '', '53.99999999999994', '',
-           '54.09999999999994', '', '54.19999999999993', '',
-           '54.299999999999926', '', '54.39999999999992', '',
-           '54.499999999999915', '', '54.59999999999991', '',
-           '54.6999999999999', '', '54.7999999999999', '',
-           '54.89999999999989', '', '54.999999999999886'], dtype='<U32')
+    >>> crop_ticks(arr, .05, .25, 1)
+    (array([53.  , 53.25, 53.5 , 53.75, 54.  , 54.25, 54.5 , 54.75, 55.  ]), array(['53.0', '', '', '', '54.0', '', '', '', '55.0'], dtype='<U32'))
+    >>> crop_ticks(arr, .05, .25, .5)
+    (array([53.  , 53.25, 53.5 , 53.75, 54.  , 54.25, 54.5 , 54.75, 55.  ]), array(['53.0', '', '53.5', '', '54.0', '', '54.5', '', '55.0'],
+          dtype='<U32'))
     """
-    keep = [v for k, v in enumerate(arr) if k % (span / tick) == 0]
-    non_char_exclusive_keep = [k if k in keep else '' for k in arr]
-    return non_char_exclusive_keep
+    if not tick <= minorticks <= majorticks:
+        raise ValueError('expected tick <= minorticks <= majorticks')
+
+    # Define label
+    start, stop = arr[0], arr[-1]
+    num = (stop - start) / minorticks + 1
+    # It will be ok use `np.arange()` instead like below
+    #   locs = list(np.arange(start, stop, minorticks))
+    # but float value take like 55.0000001 value
+    # so that incorrect `label` list
+    locs = np.linspace(start, stop, int(num))
+
+    # Define label
+    keep = [v for k, v in enumerate(arr) if k % (majorticks / tick) == 0]
+    labels = np.array([k if k in keep else '' for k in locs])
+    return locs, labels
 
 
 class Trace(pd.DataFrame):
