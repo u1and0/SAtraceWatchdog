@@ -59,11 +59,9 @@ sns.set(style='whitegrid',
 def plot_onefile(filename,
                  directory=None,
                  column='AVER',
-                 color='gray',
-                 linewidth=0.5,
-                 figsize=(12, 8),
                  shownoise=True,
                  xticks=None,
+                 ylabel=None,
                  *args,
                  **kwargs):
     """スペクトラムファイル1ファイルをプロットします。
@@ -73,10 +71,7 @@ def plot_onefile(filename,
     select = Trace(df[column])
 
     # Base chart
-    ax = select.plot(color=color,
-                     linewidth=linewidth,
-                     figsize=figsize,
-                     title=title_renamer(filename),
+    ax = select.plot(title=title_renamer(filename),
                      legend=False,
                      *args,
                      **kwargs)
@@ -87,6 +82,9 @@ def plot_onefile(filename,
     if xticks is not None:
         locs, labels = crop_ticks(df.index, *xticks)
         plt.xticks(locs, labels)
+
+    if ylabel is not None:
+        plt.ylabel(ylabel)
 
     select.plot_markers(ax=ax, legend=False)
     if shownoise:

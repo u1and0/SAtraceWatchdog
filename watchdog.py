@@ -21,7 +21,7 @@ from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
 from SAtraceWatchdog import report
 
-VERSION = 'v0.6.6'
+VERSION = 'v0.6.7'
 DAY_SECOND = 60 * 60 * 24
 ROOT = Path(__file__).parent
 
@@ -229,6 +229,7 @@ class Watch:
                         Watch.config.ymax + Watch.config.ystep,
                         Watch.config.ystep,
                     ),
+                    ylabel='dBm',
                 )
             except ZeroDivisionError as _e:
                 Slack().log(self.log.warning,
