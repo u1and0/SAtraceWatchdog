@@ -168,6 +168,50 @@ def fine_ticks(tick, deg):
                        int((tick.max() - tick.min()) / deg + 1))
 
 
+def crop_ticks(arr, tick, minorticks, majorticks):
+    """ tickごとに連なるリストarrから
+    minorticksごとにgrid線を引き
+    majorticksごとにlabelsを返す
+
+    majorticksごとに値を残したlabelsは文字列リスト(np.array)
+    残す値以外は空白文字''に置きかえる
+
+    * arr: array like
+    * tick: minimum substance between `arr`
+    * minorticks: keep `majorticks` frequency
+    * majorticks: keep `majorticks` frequency
+
+    >>> arr = np.linspace(53,55,41)
+    >>> arr
+    array([53.  , 53.05, 53.1 , 53.15, 53.2 , 53.25, 53.3 , 53.35, 53.4 ,
+           53.45, 53.5 , 53.55, 53.6 , 53.65, 53.7 , 53.75, 53.8 , 53.85,
+           53.9 , 53.95, 54.  , 54.05, 54.1 , 54.15, 54.2 , 54.25, 54.3 ,
+           54.35, 54.4 , 54.45, 54.5 , 54.55, 54.6 , 54.65, 54.7 , 54.75,
+           54.8 , 54.85, 54.9 , 54.95, 55.  ])
+    >>> crop_ticks(arr, .05, .25, 1)
+    (array([53.  , 53.25, 53.5 , 53.75, 54.  , 54.25, 54.5 , 54.75, 55.  ]), array(['53.0', '', '', '', '54.0', '', '', '', '55.0'], dtype='<U32'))
+    >>> crop_ticks(arr, .05, .25, .5)
+    (array([53.  , 53.25, 53.5 , 53.75, 54.  , 54.25, 54.5 , 54.75, 55.  ]), array(['53.0', '', '53.5', '', '54.0', '', '54.5', '', '55.0'],
+          dtype='<U32'))
+    """
+    if not tick <= minorticks <= majorticks:
+        raise ValueError('expected tick <= minorticks <= majorticks')
+
+    # Define label
+    start, stop = arr[0], arr[-1]
+    num = (stop - start) / minorticks + 1
+    # It will be ok use `np.arange()` instead like below
+    #   locs = list(np.arange(start, stop, minorticks))
+    # but float value take like 55.0000001 value
+    # so that incorrect `label` list
+    locs = np.linspace(start, stop, int(num))
+
+    # Define label
+    keep = [v for k, v in enumerate(arr) if k % (majorticks / tick) == 0]
+    labels = np.array([k if k in keep else '' for k in locs])
+    return locs, labels
+
+
 class Trace(pd.DataFrame):
     """pd.DataFrameのように扱えるTraceクラス"""
     # marker設定
@@ -190,37 +234,38 @@ class Trace(pd.DataFrame):
 
     def bandsignal(self, center, span):
         """centerから±spanのindexに対してのデシベル平均を返す
-        >>> aa = np.arange(1, 31).reshape(3, -1).T
+        >>> aa = np.arange(1, 11).T
         >>> index = np.linspace(0.1, 1, 10)
-        >>> trs = Trace(aa, index=index, columns=list('abc'))
+        >>> trs = Trace(aa, index=index, columns=['a'])
         >>> trs
-              a   b   c
-        0.1   1  11  21
-        0.2   2  12  22
-        0.3   3  13  23
-        0.4   4  14  24
-        0.5   5  15  25
-        0.6   6  16  26
-        0.7   7  17  27
-        0.8   8  18  28
-        0.9   9  19  29
-        1.0  10  20  30
+              a
+        0.1   1
+        0.2   2
+        0.3   3
+        0.4   4
+        0.5   5
+        0.6   6
+        0.7   7
+        0.8   8
+        0.9   9
+        1.0  10
         >>> # trs.bandsignal returns dB sum of index 0.4~0.6
         >>> trs.bandsignal(center=0.5, span=0.2)
-        a     6.410678
-        b    16.410678
-        c    26.410678
+        a    9.655236
         dtype: float64
         >>> # RuntimeWarning: divide by zero encountered in log10
         """
-        df = self.reindex(self.marker).loc[center - span / 2:center + span / 2]
-        return df.db2mw().sum().mw2db()
-
+        df = self.loc[center - span / 2:center + span / 2]
+        return df.db2mw().sum()
 
     def heatmap(self,
                 title,
                 xlabel='Frequency[kHz]',
                 yzlabel='Power[dBm]',
+                color='gray',
+                ylim=(-119, -20),
+                linewidth=.2,
+                figsize=(8, 12),
                 cmap='jet',
                 cmaphigh: float = -60.0,
                 cmaplow: float = -100.0,
@@ -239,16 +284,16 @@ class Trace(pd.DataFrame):
         * 注目周波数だけを赤色のマーカーでマーカープロット
         * 一日5分間隔で測定されたデータを整形する(resample, reindexメソッド)
         * ウォータフォールをイメージプロット(countourf plot)"""
-        fig = plt.figure(figsize=(8, 12))
         G = gs.GridSpec(3, 14)
 
         # __ALLPLOT___________________
         ax1 = plt.subplot(G[0, :-1])
         # Spectrum plot
         ax = self.plot(legend=False,
-                       color='gray',
-                       linewidth=.2,
-                       ylim=(-119, -20),
+                       color=color,
+                       linewidth=linewidth,
+                       ylim=ylim,
+                       figsize=figsize,
                        ax=ax1)
         # Marker plot
         maxs = self.reindex(self.marker).loc[self.marker].max(1)
@@ -285,7 +330,7 @@ class Trace(pd.DataFrame):
                           extend=extend)
         d5 = pd.date_range('00:00', '23:55',
                            freq='5T').strftime('%H:%M')  # 5分ごとの文字列
-        d5 = np.append(d5, '24:00')  # 24:00は作れないのでappend
+        # d5 = np.append(d5, '24:00')  # 24:00は作れないのでappend
         # ...しようとしたけど、上のグラフとラベルかぶるから廃止
         yticks(np.arange(0, 289, 24), d5[::24])
         plt.xlabel(xlabel)

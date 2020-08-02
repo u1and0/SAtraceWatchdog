@@ -21,7 +21,7 @@ from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
 from SAtraceWatchdog import report
 
-VERSION = 'v0.6.6'
+VERSION = 'v0.6.7'
 DAY_SECOND = 60 * 60 * 24
 ROOT = Path(__file__).parent
 
@@ -100,14 +100,17 @@ class Watch:
             'figsize',
             'shownoise',
             # oneplot.plot_onefile option
-            # xticks=np.linspace(config.min,config.max,xstep)
-            'xstep',
+            # locs, labels = tracer.crop_ticks(xticks, xgrids, xlabels)
+            'xticks',  # xticks:x軸最小幅
+            'xgrids',  # xgrids:x軸に引く補助線の間隔
+            'xlabels',  # xlabels:x軸に入れるラベルの間隔
             # oneplot.plot_onefile option
             # yticks=np.linspace(ymin,ymax,ystep)
             'ymin',
             'ymax',
             'ystep',
             # tracer.Trace.heatmap() args
+            'h_figsize',
             'cmap',
             'cmaphigh',
             'cmaplow',
@@ -212,17 +215,30 @@ class Watch:
                     linewidth=Watch.config.linewidth,
                     figsize=Watch.config.figsize,
                     shownoise=Watch.config.shownoise,
-                    xstep=Watch.config.xstep,
-                    ylim=(Watch.config.ymin, Watch.config.ymax),
-                    yticks=np.linspace(Watch.config.ymin, Watch.config.ymax,
-                                       Watch.config.ystep),
+                    xticks=(
+                        Watch.config.xticks,
+                        Watch.config.xgrids,
+                        Watch.config.xlabels,
+                    ),
+                    ylim=(
+                        Watch.config.ymin,
+                        Watch.config.ymax,
+                    ),
+                    yticks=np.arange(
+                        Watch.config.ymin,
+                        Watch.config.ymax + Watch.config.ystep,
+                        Watch.config.ystep,
+                    ),
+                    ylabel='dBm',
                 )
             except ZeroDivisionError as _e:
                 Slack().log(self.log.warning,
                             f'{base}: {_e}, txtファイルは送信されてきましたがデータが足りません')
-                continue
-            Slack().log(self.log.info,
-                        f'画像の出力に成功しました {self.directory}/{base}.png')
+            else:
+                Slack().log(self.log.info,
+                            f'画像の出力に成功しました {self.directory}/{base}.png')
+            finally:
+                plt.close()
             # Reset count
             Watch.no_update_count = 0
             Watch.no_update_threshold = 2
@@ -277,6 +293,13 @@ class Watch:
                                               remove_flag=num_of_files_ok)
             trss.heatmap(
                 title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
+                color=Watch.config.color,
+                linewidth=Watch.config.linewidth,
+                figsize=Watch.config.h_figsize,
+                ylim=(
+                    Watch.config.ymin,
+                    Watch.config.ymax,
+                ),
                 cmap=Watch.config.cmap,
                 cmaphigh=Watch.config.cmaphigh,
                 cmaplow=Watch.config.cmaplow,
