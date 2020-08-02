@@ -262,6 +262,10 @@ class Trace(pd.DataFrame):
                 title,
                 xlabel='Frequency[kHz]',
                 yzlabel='Power[dBm]',
+                color='gray',
+                ylim=(-119, -20),
+                linewidth=.2,
+                figsize=(8, 12),
                 cmap='jet',
                 cmaphigh: float = -60.0,
                 cmaplow: float = -100.0,
@@ -280,16 +284,16 @@ class Trace(pd.DataFrame):
         * 注目周波数だけを赤色のマーカーでマーカープロット
         * 一日5分間隔で測定されたデータを整形する(resample, reindexメソッド)
         * ウォータフォールをイメージプロット(countourf plot)"""
-        fig = plt.figure(figsize=(8, 12))
         G = gs.GridSpec(3, 14)
 
         # __ALLPLOT___________________
         ax1 = plt.subplot(G[0, :-1])
         # Spectrum plot
         ax = self.plot(legend=False,
-                       color='gray',
-                       linewidth=.2,
-                       ylim=(-119, -20),
+                       color=color,
+                       linewidth=linewidth,
+                       ylim=ylim,
+                       figsize=figsize,
                        ax=ax1)
         # Marker plot
         maxs = self.reindex(self.marker).loc[self.marker].max(1)

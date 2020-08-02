@@ -13,11 +13,16 @@
     "transfer_rate":300,
     "usecols":"AVER",
 
+    "__comment__":"スペクトラムプロットのオプション",
     "__comment__":"oneplot.plot_onefile option *args, **kwargs",
     "color":"gray",
     "linewidth":0.5,
     "figsize":[12,8],
     "shownoise":true,
+
+    "__comment__":"ウォーターフォールのオプション",
+    "__comment__":"tracer.Trace.heatmap option *args, **kwargs",
+    "h_figsize":[8,12],
 
     "__comment__":"oneplot.plot_onefile option xticks=tracer.crop_ticks(xticks, xgrids, xlabels)",
     "__comment__":"xticks:x軸最小幅",

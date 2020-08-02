@@ -110,6 +110,7 @@ class Watch:
             'ymax',
             'ystep',
             # tracer.Trace.heatmap() args
+            'h_figsize',
             'cmap',
             'cmaphigh',
             'cmaplow',
@@ -289,6 +290,13 @@ class Watch:
                                               remove_flag=num_of_files_ok)
             trss.heatmap(
                 title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
+                color=Watch.config.color,
+                linewidth=Watch.config.linewidth,
+                figsize=Watch.config.h_figsize,
+                ylim=(
+                    Watch.config.ymin,
+                    Watch.config.ymax,
+                ),
                 cmap=Watch.config.cmap,
                 cmaphigh=Watch.config.cmaphigh,
                 cmaplow=Watch.config.cmaplow,
