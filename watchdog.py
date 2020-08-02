@@ -234,9 +234,11 @@ class Watch:
             except ZeroDivisionError as _e:
                 Slack().log(self.log.warning,
                             f'{base}: {_e}, txtファイルは送信されてきましたがデータが足りません')
-                continue
-            Slack().log(self.log.info,
-                        f'画像の出力に成功しました {self.directory}/{base}.png')
+            else:
+                Slack().log(self.log.info,
+                            f'画像の出力に成功しました {self.directory}/{base}.png')
+            finally:
+                plt.close()
             # Reset count
             Watch.no_update_count = 0
             Watch.no_update_threshold = 2
