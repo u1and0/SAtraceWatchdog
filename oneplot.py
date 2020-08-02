@@ -41,7 +41,7 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from SAtraceWatchdog.tracer import read_trace, title_renamer, Trace
+from SAtraceWatchdog.tracer import read_trace, title_renamer, Trace, crop_ticks
 
 # グラフ描画オプション
 sns.set(style='whitegrid',
@@ -56,31 +56,36 @@ sns.set(style='whitegrid',
         })
 
 
-def plot_onefile(
-        filename,
-        directory=None,
-        column='AVER',
-        color='gray',
-        linewidth=0.5,
-        figsize=(12, 8),
-        xstep=9,  # xstepはyと違ってデータの1行目のconfigから読む
-        shownoise=True,
-        *args,
-        **kwargs):
+def plot_onefile(filename,
+                 directory=None,
+                 column='AVER',
+                 shownoise=True,
+                 xticks=None,
+                 ylabel=None,
+                 *args,
+                 **kwargs):
     """スペクトラムファイル1ファイルをプロットします。
     directoryが指定されてたら、その場所に同じベースネームでpng形式に保存します。
     """
     df = read_trace(filename)
     select = Trace(df[column])
-    xticks = np.linspace(select.index[0], select.index[-1], xstep)
-    ax = select.plot(color=color,
-                     linewidth=linewidth,
-                     figsize=figsize,
-                     title=title_renamer(filename),
+
+    # Base chart
+    ax = select.plot(title=title_renamer(filename),
                      legend=False,
-                     xticks=xticks,
                      *args,
                      **kwargs)
+
+    # Generate array of grid & label
+    # xticks is a tuple of arg for tracer.crop_ticks()
+    # xticks = (tick, minorticks, majorticks)
+    if xticks is not None:
+        locs, labels = crop_ticks(df.index, *xticks)
+        plt.xticks(locs, labels)
+
+    if ylabel is not None:
+        plt.ylabel(ylabel)
+
     select.plot_markers(ax=ax, legend=False)
     if shownoise:
         select.plot_noisefloor()
