@@ -104,6 +104,7 @@ $ docker run -d \
 
 ## Update
 
+* v0.6.7          [add] crop_ticks() for tweak ticks parameter from config.json xticks / xgrids/ xlabels
 * v0.6.6          Disable exporting csv / excel file. Use golang tool (satrace, elen) instead
 * v0.6.5          bandsignalを平均(mean)ではなく合計値(sum)で計算するように変更
 * v0.6.4          データが空のときにtrace.plot_noisefloor()で発生するZeroDivisionErrorを回避
