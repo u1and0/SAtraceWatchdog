@@ -330,7 +330,7 @@ class Trace(pd.DataFrame):
                           extend=extend)
         d5 = pd.date_range('00:00', '23:55',
                            freq='5T').strftime('%H:%M')  # 5分ごとの文字列
-        d5 = np.append(d5, '24:00')  # 24:00は作れないのでappend
+        # d5 = np.append(d5, '24:00')  # 24:00は作れないのでappend
         # ...しようとしたけど、上のグラフとラベルかぶるから廃止
         yticks(np.arange(0, 289, 24), d5[::24])
         plt.xlabel(xlabel)
