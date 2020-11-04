@@ -289,6 +289,7 @@ class Trace(pd.DataFrame):
         # __ALLPLOT___________________
         ax1 = plt.subplot(G[0, :-1])
         # Spectrum plot
+        ylim[0] *= ylim[0] * 0.99  # 1% loss for graph ytick line
         ax = self.plot(legend=False,
                        color=color,
                        linewidth=linewidth,
