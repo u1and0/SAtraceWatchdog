@@ -309,7 +309,18 @@ class Trace(pd.DataFrame):
                        markersize=5)
 
         plt.ylabel(yzlabel)
+        # Set yzlabel for color bar
+        xindex = self.index[-1]
+        yindex = self.min().min()
+        plt.text(xindex,
+                 yindex*0.9,
+                 f'←{yzlabel}',
+                 rotation='vertical',
+                 fontsize=18,
+                 )
+        # Set Marker plot ticks
         ax.xaxis.set_ticks_position('top')  # xラベル上にする
+        ax.yaxis.set_ticks_position('left')
 
         # __MAKE WATERFALL DATA________________
         dfk = self.T.resample('5T').first()  # 隙間埋める
@@ -342,7 +353,6 @@ class Trace(pd.DataFrame):
         ax4 = plt.subplot(G[1:, -1], )
         ax = plt.colorbar(ticks=fine_ticks(interval, cmapstep),
                           cax=ax4)  # カラーバー2区切りで表示
-        ax.set_label(yzlabel)
 
         plt.subplots_adjust(hspace=0)  # グラフ間の隙間なし
         return ax
