@@ -11,6 +11,20 @@ from matplotlib.pylab import yticks
 from tqdm import tqdm
 import pandas as pd
 
+# graph style setting
+sns.set(
+    context="notebook",
+    style="ticks",
+    palette='husl',
+    # font="IPAGothic",
+    font_scale=1.5,
+    color_codes=False,
+    rc={
+        'grid.linestyle': ':',
+        'grid.color': 'gray',
+        'image.cmap': 'viridis'
+    })
+
 
 def config_parse_freq(key: str) -> (int, str):
     """stringの周波数を単位変換してfloatで返す"""
@@ -50,11 +64,11 @@ def read_conf(line: str) -> dict:
 
 
 def read_trace(
-        data: str,
-        config: dict = None,
-        usecols=None,  # overwrited arg
-        *args,
-        **kwargs,
+    data: str,
+    config: dict = None,
+    usecols=None,  # overwrited arg
+    *args,
+    **kwargs,
 ) -> pd.DataFrame:
     """dataを読み取ってグラフ用データを返す
     dataはファイル名またはdata string
@@ -266,7 +280,7 @@ class Trace(pd.DataFrame):
                 ylim=(-119, -20),
                 linewidth=.2,
                 figsize=(8, 12),
-                cmap='jet',
+                cmap='viridis',
                 cmaphigh: float = -60.0,
                 cmaplow: float = -100.0,
                 cmaplevel: int = 100,
@@ -284,13 +298,17 @@ class Trace(pd.DataFrame):
         * 注目周波数だけを赤色のマーカーでマーカープロット
         * 一日5分間隔で測定されたデータを整形する(resample, reindexメソッド)
         * ウォータフォールをイメージプロット(countourf plot)"""
+        # local const
+        FREQ = '5T'
+        PERIODS = 288
         G = gs.GridSpec(3, 14)
 
         # __ALLPLOT___________________
         ax1 = plt.subplot(G[0, :-1])
         # Spectrum plot
-        ylim = (ylim[0] * 0.99,   # 1% loss for graph ytick line
-                ylim[1])
+        ylim = (
+            ylim[0] * 0.99,  # 1% loss for graph ytick line
+            ylim[1])
         ax = self.plot(legend=False,
                        color=color,
                        linewidth=linewidth,
@@ -308,24 +326,26 @@ class Trace(pd.DataFrame):
                        ax=ax1,
                        markersize=5)
 
+        plt.grid()
         plt.ylabel(yzlabel)
         # Set yzlabel for color bar
         xindex = self.index[-1]
         yindex = self.min().min()
-        plt.text(xindex,
-                 yindex*0.9,
-                 f'←{yzlabel}',
-                 rotation='vertical',
-                 fontsize=18,
-                 )
+        plt.text(
+            xindex * 1.01,
+            yindex * 0.9,
+            f'←{yzlabel}',
+            rotation='vertical',
+            fontsize=18,
+        )
         # Set Marker plot ticks
         ax.xaxis.set_ticks_position('top')  # xラベル上にする
         ax.yaxis.set_ticks_position('left')
 
         # __MAKE WATERFALL DATA________________
-        dfk = self.T.resample('5T').first()  # 隙間埋める
-        dfk = dfk.reindex(pd.date_range(title, freq='5T',
-                                        periods=288))  # 最初/最後埋め
+        dfk = self.T.resample(FREQ).first()  # 隙間埋める
+        dfk = dfk.reindex(pd.date_range(title, freq=FREQ,
+                                        periods=PERIODS))  # 最初/最後埋め
         dfk.index = np.arange(len(dfk))  # 縦軸はdatetime index描画できないのでintにする
 
         # __PLOT WATERFALL______________
@@ -342,10 +362,10 @@ class Trace(pd.DataFrame):
                           cmap=cmap,
                           extend=extend)
         d5 = pd.date_range('00:00', '23:55',
-                           freq='5T').strftime('%H:%M')  # 5分ごとの文字列
+                           freq=FREQ).strftime('%H:%M')  # 5分ごとの文字列
         d5 = np.append(d5, '24:00')  # 24:00は作れないのでappend
         # ...しようとしたけど、上のグラフとラベルかぶるから廃止
-        yticks(np.arange(0, 289, 24), d5[::24])
+        yticks(np.arange(0, PERIODS + 1, 24), d5[::24])
         plt.xlabel(xlabel)
         plt.ylabel(title)
 
