@@ -44,16 +44,19 @@ import seaborn as sns
 from SAtraceWatchdog.tracer import read_trace, title_renamer, Trace, crop_ticks
 
 # グラフ描画オプション
-sns.set(style='whitegrid',
-        palette='husl',
-        font="IPAGothic",
-        font_scale=1.5,
-        color_codes=False,
-        rc={
-            'grid.linestyle': ':',
-            'grid.color': 'gray',
-            'image.cmap': 'viridis'
-        })
+
+
+def seaborn_option():
+    sns.set(style='whitegrid',
+            palette='husl',
+            font="IPAGothic",
+            font_scale=1.5,
+            color_codes=False,
+            rc={
+                'grid.linestyle': ':',
+                'grid.color': 'gray',
+                'image.cmap': 'viridis'
+            })
 
 
 def plot_onefile(filename,
@@ -67,6 +70,7 @@ def plot_onefile(filename,
     """スペクトラムファイル1ファイルをプロットします。
     directoryが指定されてたら、その場所に同じベースネームでpng形式に保存します。
     """
+    seaborn_option()
     df = read_trace(filename)
     select = Trace(df[column])
 
