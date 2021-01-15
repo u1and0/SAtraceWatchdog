@@ -11,19 +11,19 @@ from matplotlib.pylab import yticks
 from tqdm import tqdm
 import pandas as pd
 
-# graph style setting
-sns.set(
-    context="notebook",
-    style="ticks",
-    palette='husl',
-    # font="IPAGothic",
-    font_scale=1.5,
-    color_codes=False,
-    rc={
-        'grid.linestyle': ':',
-        'grid.color': 'gray',
-        'image.cmap': 'viridis'
-    })
+
+def seaborn_option():
+    sns.set(context="notebook",
+            style="ticks",
+            palette='husl',
+            font="IPAGothic",
+            font_scale=1.5,
+            color_codes=False,
+            rc={
+                'grid.linestyle': ':',
+                'grid.color': 'gray',
+                'image.cmap': 'viridis'
+            })
 
 
 def config_parse_freq(key: str) -> (int, str):
@@ -277,6 +277,7 @@ class Trace(pd.DataFrame):
                 xlabel='Frequency[kHz]',
                 yzlabel='Power[dBm]',
                 color='gray',
+                xticks=None,
                 ylim=(-119, -20),
                 linewidth=.2,
                 figsize=(8, 12),
@@ -303,6 +304,8 @@ class Trace(pd.DataFrame):
         PERIODS = 288
         G = gs.GridSpec(3, 14)
 
+        seaborn_option()
+
         # __ALLPLOT___________________
         ax1 = plt.subplot(G[0, :-1])
         # Spectrum plot
@@ -326,14 +329,22 @@ class Trace(pd.DataFrame):
                        ax=ax1,
                        markersize=5)
 
+        # Generate array of grid & label
+        # xticks is a tuple of arg for tracer.crop_ticks()
+        # xticks = (tick, minorticks, majorticks)
+        if xticks is not None:
+            locs, labels = crop_ticks(self.index, *xticks)
+            plt.xticks(locs, labels)
+
+        # Plot modify
         plt.grid()
         plt.ylabel(yzlabel)
         # Set yzlabel for color bar
-        xindex = self.index[-1]
-        yindex = self.min().min()
+        text_xpos = self.index[-1]
+        text_ypos = self.min().min()
         plt.text(
-            xindex * 1.01,
-            yindex * 0.9,
+            text_xpos * 1.01,
+            text_ypos * 0.9,
             f'←{yzlabel}',
             rotation='vertical',
             fontsize=18,
