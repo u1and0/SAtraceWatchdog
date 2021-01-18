@@ -21,7 +21,7 @@ from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
 from SAtraceWatchdog import report
 
-VERSION = 'v0.6.7'
+VERSION = 'v0.6.9'
 DAY_SECOND = 60 * 60 * 24
 ROOT = Path(__file__).parent
 
@@ -294,6 +294,11 @@ class Watch:
             trss.heatmap(
                 title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
                 color=Watch.config.color,
+                xticks=(
+                    Watch.config.xticks,
+                    Watch.config.xgrids,
+                    Watch.config.xlabels,
+                ),
                 linewidth=Watch.config.linewidth,
                 figsize=Watch.config.h_figsize,
                 ylim=(
