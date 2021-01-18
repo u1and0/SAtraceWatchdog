@@ -344,7 +344,7 @@ class Trace(pd.DataFrame):
         text_ypos = self.min().min()
         plt.text(
             text_xpos * 1.01,
-            text_ypos * 0.9,
+            text_ypos * 0.8,
             f'←{yzlabel}',
             rotation='vertical',
             fontsize=18,

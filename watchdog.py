@@ -294,6 +294,11 @@ class Watch:
             trss.heatmap(
                 title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
                 color=Watch.config.color,
+                xticks=(
+                    Watch.config.xticks,
+                    Watch.config.xgrids,
+                    Watch.config.xlabels,
+                ),
                 linewidth=Watch.config.linewidth,
                 figsize=Watch.config.h_figsize,
                 ylim=(
