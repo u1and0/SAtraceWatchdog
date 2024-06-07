@@ -63,81 +63,6 @@ def read_conf(line: str) -> dict:
     return conf_dict
 
 
-def read_trace(
-    data: str,
-    config: dict = None,
-    usecols=None,  # overwrited arg
-    *args,
-    **kwargs,
-) -> pd.DataFrame:
-    """dataを読み取ってグラフ用データを返す
-    dataはファイル名またはdata string
-    > 後者の場合はbase64.b64decode(byte).decode()などとして使用する。
-
-    1行目にスペクトラムアナライザの設定が入っているので、
-    dictionaryで返し、
-    2行目以降をDataFrameに入れる
-    indexの調整をスペアナの設定から自動で行う
-
-    usecolsオプションはconfigの:TRACE:TYPEパース後の名称を指定する。
-    (ex: AVER, MAXH, MINH)
-    """
-    if config is None:  # configを指定しなければ
-        # 自動でdataの1行目をconfigとして読み込む
-        with open(data, 'r') as f:
-            config = read_conf(f.readline())
-
-    # Set config
-    names = [v for k, v in config.items() if k.startswith(':TRAC')]
-    center, _ = config_parse_freq(config[':FREQ:CENT'])
-    span, unit = config_parse_freq(config[':FREQ:SPAN'])
-    # VISAコマンドのデフォルト値は1001ポイント
-    points = int(config[':SWE:POIN']) if ":SWE:POIN" in config.keys() else 1001
-
-    # Read DataFrame from filename or string
-    df = pd.read_csv(data,
-                     sep=r'\s+',
-                     index_col=0,
-                     skiprows=1,
-                     skipfooter=1,
-                     names=names,
-                     engine='python',
-                     *args,
-                     **kwargs)
-    # DataFrameをreadしたあとでindexを変更すると、データがないときにエラー
-    #
-    # => ValueError: Length mismatch: Expected axis has 0 elements,
-    # new values have 4001 elements
-    #
-    # が出てしまうので、NaNを詰めるようにreindex()する。
-    if len(df) < points:
-        df = df.reindex(index=range(points), columns=names)
-
-    # indexをconfigに合わせて変更
-    df.index = np.linspace(
-        center - span / 2,
-        center + span / 2,
-        points,
-    )
-    df.index.name = unit
-    if usecols:
-        df = df[usecols]  # Select cols
-    return Trace(df)
-
-
-def read_traces(*files, usecols, **kwargs):
-    """複数ファイルにread_trace()して1つのTraceにまとめる
-
-    usecolsを指定しないとValueError
-    ['AVER'], ['MINH'], ['MAXH']などを指定する。
-    """
-    return Trace({
-        datetime.datetime.strptime(Path(f).stem, '%Y%m%d_%H%M%S'):  # basename
-        read_trace(f, usecols=usecols, *kwargs).squeeze()
-        for f in tqdm(files, leave=False)  # remove progress bar after all
-    })
-
-
 def title_renamer(filename: str) -> str:
     """ファイル名から %Y/%m/%d %T 形式の日付を返す"""
     basename = Path(filename).stem
@@ -409,6 +334,81 @@ class Trace(pd.DataFrame):
         bools = resample.isna().T.any()  # NaNが一つでも含まれる行があればTrue, なければFalse
         nan_idx = bools[bools].index  # Trueのとこのインデックスだけ抽出
         return nan_idx
+
+
+def read_trace(
+    data: str,
+    config: dict = None,
+    usecols=None,  # overwrited arg
+    *args,
+    **kwargs,
+) -> Trace:
+    """dataを読み取ってグラフ用データを返す
+    dataはファイル名またはdata string
+    > 後者の場合はbase64.b64decode(byte).decode()などとして使用する。
+
+    1行目にスペクトラムアナライザの設定が入っているので、
+    dictionaryで返し、
+    2行目以降をDataFrameに入れる
+    indexの調整をスペアナの設定から自動で行う
+
+    usecolsオプションはconfigの:TRACE:TYPEパース後の名称を指定する。
+    (ex: AVER, MAXH, MINH)
+    """
+    if config is None:  # configを指定しなければ
+        # 自動でdataの1行目をconfigとして読み込む
+        with open(data, 'r') as f:
+            config = read_conf(f.readline())
+
+    # Set config
+    names = [v for k, v in config.items() if k.startswith(':TRAC')]
+    center, _ = config_parse_freq(config[':FREQ:CENT'])
+    span, unit = config_parse_freq(config[':FREQ:SPAN'])
+    # VISAコマンドのデフォルト値は1001ポイント
+    points = int(config[':SWE:POIN']) if ":SWE:POIN" in config.keys() else 1001
+
+    # Read DataFrame from filename or string
+    df = pd.read_csv(data,
+                     sep=r'\s+',
+                     index_col=0,
+                     skiprows=1,
+                     skipfooter=1,
+                     names=names,
+                     engine='python',
+                     *args,
+                     **kwargs)
+    # DataFrameをreadしたあとでindexを変更すると、データがないときにエラー
+    #
+    # => ValueError: Length mismatch: Expected axis has 0 elements,
+    # new values have 4001 elements
+    #
+    # が出てしまうので、NaNを詰めるようにreindex()する。
+    if len(df) < points:
+        df = df.reindex(index=range(points), columns=names)
+
+    # indexをconfigに合わせて変更
+    df.index = np.linspace(
+        center - span / 2,
+        center + span / 2,
+        points,
+    )
+    df.index.name = unit
+    if usecols:
+        df = df[usecols]  # Select cols
+    return Trace(df)
+
+
+def read_traces(*files, usecols, **kwargs):
+    """複数ファイルにread_trace()して1つのTraceにまとめる
+
+    usecolsを指定しないとValueError
+    ['AVER'], ['MINH'], ['MAXH']などを指定する。
+    """
+    return Trace({
+        datetime.datetime.strptime(Path(f).stem, '%Y%m%d_%H%M%S'):  # basename
+        read_trace(f, usecols=usecols, *kwargs).squeeze()
+        for f in tqdm(files, leave=False)  # remove progress bar after all
+    })
 
 
 def db2mw(a):
