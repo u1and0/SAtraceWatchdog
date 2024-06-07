@@ -83,8 +83,13 @@ def plot_onefile(filename,
     # xticks is a tuple of arg for tracer.crop_ticks()
     # xticks = (tick, minorticks, majorticks)
     if xticks is not None:
-        locs, labels = crop_ticks(df.index, *xticks)
-        plt.xticks(locs, labels)
+        # locs, labels = crop_ticks(df.index, *xticks)
+        # plt.xticks(locs, labels)
+        min_v, max_v = min(df.index), max(df.index)
+        major_ticks = np.arange(min_v, max_v, 1)
+        minor_ticks = np.arange(min_v, max_v, 0.5)
+        ax.set_xticks(major_ticks)
+        ax.set_xticks(minor_ticks, minor=True)
 
     if ylabel is not None:
         plt.ylabel(ylabel)
