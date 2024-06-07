@@ -3,7 +3,7 @@
 txtファイルとpngファイルの差分をチェックして、グラフ化されていないファイルだけpng化します。
 """
 import sys
-import copy
+from typing import Dict, List, Any, Optional
 import argparse
 from time import sleep
 from datetime import datetime
@@ -21,7 +21,7 @@ from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
 from SAtraceWatchdog import report
 
-VERSION = 'v0.6.9'
+VERSION = 'v0.6.10'
 DAY_SECOND = 60 * 60 * 24
 ROOT = Path(__file__).parent
 
@@ -42,8 +42,8 @@ class Watch:
     configfile = ROOT / 'config/config.json'
     # アップデートファイル保持
     config = None  # Watch.loop() の毎回のループで読み込み
-    last_config = None
-    last_files = defaultdict(lambda: [])
+    last_config: Optional[Dict[str, Any]] = None
+    last_files: Dict[str, List] = defaultdict(lambda: [])
     # アップデート記録保持
     no_update_count = 0
     no_update_threshold = 1
@@ -317,6 +317,7 @@ class Watch:
             plt.close()  # reset plot
             # logdi = self.log.debug if self.debug else
             Slack().log(self.log.info, f'画像の出力に成功しました {filename}')
+            Slack().upload(filename, f'画像の出力に成功しました {filename}')
 
             # データの抜けを検証"""
             rate = '{}T'.format(Watch.config.transfer_rate // 60)
