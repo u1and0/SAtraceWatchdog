@@ -2,6 +2,7 @@
 """Slack に投稿するモジュール"""
 from pathlib import Path
 import requests
+from slack_sdk import WebClient
 from SAtraceWatchdog.tracer import json_load_encode_with_bom
 
 ROOT = Path(__file__).parent
@@ -13,40 +14,36 @@ CONFIG = json_load_encode_with_bom(CONFIGFILE)
 
 class Slack:
     """Post info and error to slack channel"""
-    token = CONFIG['token']
-    channels = CONFIG['channel_id']
-    slack_post = CONFIG['slack_post']
+    _token: str = CONFIG['token']
+    _channels: str = CONFIG['channel_id']
+    slack_post: bool = CONFIG['slack_post']
+    client = WebClient(_token)
 
     @classmethod
-    def upload(cls, filename, message):
+    def upload(cls, message: str, filename: str):
         """slackに画像を投稿する"""
-        name = Path(filename).name
-        url = "https://slack.com/api/files.upload"
-        data = {
-            "token": Slack.token,
-            "channels": Slack.channels,
-            "title": name,
-            "initial_comment": message
-        }
-        files = {'file': open(filename, 'rb')}
-        requests.post(url, data=data, files=files)
+        cls.client.files_upload_v2(
+            channels=cls._channels,
+            file=filename,
+            title=filename,
+        )
 
     @classmethod
     def message(cls, message):
         """slackにメッセージを投稿する"""
-        url = "https://slack.com/api/chat.postMessage"
-        data = {
-            "token": Slack.token,
-            "channel": Slack.channels,
-            "text": message,
-        }
-        requests.post(url, data=data)
+        cls.client.chat_postMessage(
+            channel=cls._channels,
+            text=message,
+        )
 
     @classmethod
     def log(cls, func, message, err=None):
-        """logging関数とSlack().message に同じメッセージを投げる"""
+        """logging関数とSlack().message に同じメッセージを投げる
+        usage:
+            Slack().log(self.log.info, f'画像の出力に成功しました {filename}')
+        """
         func(message)  # log.info(message), log.error(message), ...
         if cls.slack_post:
-            Slack().message(message)
+            cls.message(message)
         if err:
             raise err

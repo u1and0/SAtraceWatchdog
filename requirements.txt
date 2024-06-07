@@ -1,8 +1,9 @@
-pandas
 matplotlib
-seaborn
-requests
-pyyaml
 openpyxl
-xlrd
+pandas
+pyyaml
+requests
+seaborn
+slack_sdk
 tqdm
+xlrd

@@ -38,7 +38,6 @@ for i in glob.glob('../data/*.txt')
 """
 from pathlib import Path
 import argparse
-import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from SAtraceWatchdog.tracer import read_trace, title_renamer, Trace, crop_ticks

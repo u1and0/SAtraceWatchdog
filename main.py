@@ -3,7 +3,7 @@
 txtファイルとpngファイルの差分をチェックして、グラフ化されていないファイルだけpng化します。
 """
 import sys
-import copy
+from typing import Dict, List, Any, Optional
 import argparse
 from time import sleep
 from datetime import datetime
@@ -21,7 +21,7 @@ from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
 from SAtraceWatchdog import report
 
-VERSION = 'v0.6.9'
+VERSION = 'v0.6.10'
 DAY_SECOND = 60 * 60 * 24
 ROOT = Path(__file__).parent
 
@@ -42,8 +42,8 @@ class Watch:
     configfile = ROOT / 'config/config.json'
     # アップデートファイル保持
     config = None  # Watch.loop() の毎回のループで読み込み
-    last_config = None
-    last_files = defaultdict(lambda: [])
+    last_config: Optional[Dict[str, Any]] = None
+    last_files: Dict[str, List] = defaultdict(lambda: [])
     # アップデート記録保持
     no_update_count = 0
     no_update_threshold = 1
@@ -155,7 +155,7 @@ class Watch:
         # ファイル用ハンドラをルートロガーに追加
         root_logger.addHandler(file_handler)
 
-    def filename_resolver(self, yyyymmdd: str, remove_flag: bool) -> str:
+    def filename_resolver(self, yyyymmdd: str, remove_flag: bool) -> Path:
         """Decide waterfall filenamene
         return:
             waterfall_yymmdd_update.png
@@ -235,8 +235,10 @@ class Watch:
                 Slack().log(self.log.warning,
                             f'{base}: {_e}, txtファイルは送信されてきましたがデータが足りません')
             else:
-                Slack().log(self.log.info,
-                            f'画像の出力に成功しました {self.directory}/{base}.png')
+                filename = f"{self.directory}/{base}.png"
+                msg = f'画像の出力に成功しました {filename}'
+                Slack().log(self.log.info, msg)
+                Slack().upload(msg, filename)
             finally:
                 plt.close()
             # Reset count
@@ -289,8 +291,8 @@ class Watch:
             if self.debug:
                 Slack().log(print, f'[DEBUG] limit: {_n}')
                 Slack().log(print, f'[DEBUG] length: {len(files)}')
-            filename = self.filename_resolver(yyyymmdd=day,
-                                              remove_flag=num_of_files_ok)
+            filename: Path = self.filename_resolver(
+                yyyymmdd=day, remove_flag=num_of_files_ok)
             trss.heatmap(
                 title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
                 color=Watch.config.color,
@@ -316,12 +318,14 @@ class Watch:
             # 複数プロットが1pngファイルに表示される
             plt.close()  # reset plot
             # logdi = self.log.debug if self.debug else
-            Slack().log(self.log.info, f'画像の出力に成功しました {filename}')
+            msg = f'画像の出力に成功しました {filename}'
+            Slack().log(self.log.info, msg)
+            Slack().upload(msg, str(filename))
 
             # データの抜けを検証"""
-            rate = '{}T'.format(Watch.config.transfer_rate // 60)
+            rate = '{}min'.format(Watch.config.transfer_rate // 60)
             droped_data = trss.guess_fallout(rate=rate)
-            if any(droped_data):
+            if len(droped_data) > 0:
                 Slack().log(self.log.warning, f'データが抜けています {droped_data}')
 
     def sleep(self):
@@ -402,7 +406,7 @@ def main():
         except FileNotFoundError as _e:
             watchdog.stop(1, _e)
         except BaseException as _e:  # それ以外のエラーはエラー後sleep秒だけ待って再試行
-            watchdog.error(_e)
+            Slack().log(watchdog.log.error, f"エラーが発生しました。 {_e}")
             watchdog.sleep()
 
 
