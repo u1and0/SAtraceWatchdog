@@ -96,7 +96,7 @@ def read_trace(
 
     # Read DataFrame from filename or string
     df = pd.read_csv(data,
-                     sep='\s+',
+                     sep=r'\s+',
                      index_col=0,
                      skiprows=1,
                      skipfooter=1,
@@ -234,7 +234,7 @@ class Trace(pd.DataFrame):
     # のような形式でconfig/config.jsonファイルに記述する
     _dirname = Path(__file__).parent
     _configfile = _dirname / 'config/config.json'
-    marker = []
+    marker: list[float] = []
 
     def __init__(self, *args, **kwargs):
         super().__init__(pd.DataFrame(*args, **kwargs))
@@ -301,7 +301,7 @@ class Trace(pd.DataFrame):
         * 一日5分間隔で測定されたデータを整形する(resample, reindexメソッド)
         * ウォータフォールをイメージプロット(countourf plot)"""
         # local const
-        FREQ = '5T'
+        FREQ = '5min'
         PERIODS = 288
         G = gs.GridSpec(3, 14)
 
@@ -403,10 +403,10 @@ class Trace(pd.DataFrame):
         ax = plt.plot([_min, _max], [line, line], 'k--', *args, **kwargs)
         return ax
 
-    def guess_fallout(self, rate: str):
+    def guess_fallout(self, rate: str) -> pd.DatetimeIndex:
         """データ抜けの可能性があるDatetimeIndexを返す"""
         resample = self.T.resample(rate).first()  # rate 300 = 5min resample
-        bools = resample.isna().any(1)  # NaN行をTrueにする
+        bools = resample.isna().T.any()  # NaNが一つでも含まれる行があればTrue, なければFalse
         nan_idx = bools[bools].index  # Trueのとこのインデックスだけ抽出
         return nan_idx
 

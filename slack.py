@@ -20,12 +20,12 @@ class Slack:
     client = WebClient(_token)
 
     @classmethod
-    def upload(cls, filepath: str, message: str):
+    def upload(cls, message: str, filename: str):
         """slackに画像を投稿する"""
-        cls.client.files_upload(
+        cls.client.files_upload_v2(
             channels=cls._channels,
-            title=message,
-            file=filepath,
+            file=filename,
+            title=filename,
         )
 
     @classmethod
@@ -38,9 +38,12 @@ class Slack:
 
     @classmethod
     def log(cls, func, message, err=None):
-        """logging関数とSlack().message に同じメッセージを投げる"""
+        """logging関数とSlack().message に同じメッセージを投げる
+        usage:
+            Slack().log(self.log.info, f'画像の出力に成功しました {filename}')
+        """
         func(message)  # log.info(message), log.error(message), ...
         if cls.slack_post:
-            Slack().message(message)
+            cls.message(message)
         if err:
             raise err
