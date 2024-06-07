@@ -104,6 +104,8 @@ $ docker run -d \
 
 ## Update
 
+
+* v0.6.11         [feat] mention : しばらく更新がないときに、config.jsonに書かれたユーザーへメンションを送る機能を実装
 * v0.6.10         [fix] slack upload, DataFrame option, :SWE:POIN 省略しても動くようにした
 * v0.6.7          [add] crop_ticks() for tweak ticks parameter from config.json xticks / xgrids/ xlabels
 * v0.6.6          Disable exporting csv / excel file. Use golang tool (satrace, elen) instead
