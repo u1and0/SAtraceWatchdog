@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Slack に投稿するモジュール"""
 from pathlib import Path
-import requests
 from slack_sdk import WebClient
 from SAtraceWatchdog.tracer import json_load_encode_with_bom
 
