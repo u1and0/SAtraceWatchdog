@@ -91,7 +91,8 @@ def read_trace(
     names = [v for k, v in config.items() if k.startswith(':TRAC')]
     center, _ = config_parse_freq(config[':FREQ:CENT'])
     span, unit = config_parse_freq(config[':FREQ:SPAN'])
-    points = int(config[':SWE:POIN'])
+    # VISAコマンドのデフォルト値は1001ポイント
+    points = int(config[':SWE:POIN']) if ":SWE:POIN" in config.keys() else 1001
 
     # Read DataFrame from filename or string
     df = pd.read_csv(data,
