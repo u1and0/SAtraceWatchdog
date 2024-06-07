@@ -247,7 +247,8 @@ class Watch:
         else:  # update_filesが空で、更新がないとき
             Watch.no_update_count += 1
             if Watch.no_update_count > Watch.no_update_threshold:
-                self.no_update_warning()
+                msg = self.no_update_warning()
+                Slack().mention(self.log.warning, msg)
                 Watch.no_update_threshold *= 2
 
         # ---
@@ -337,8 +338,8 @@ class Watch:
         for _ in tqdm(range(Watch.config.check_rate), leave=False):
             sleep(1)
 
-    def no_update_warning(self):
-        """更新がしばらくないときにWarning上げる"""
+    def no_update_warning(self) -> str:
+        """更新がしばらくないときにWarning上げるメッセージを作成する"""
         no_uptime = Watch.no_update_count * Watch.config.transfer_rate
         if no_uptime < 60:
             message = f'最後の更新から{no_uptime}秒'
@@ -347,7 +348,7 @@ class Watch:
         else:
             message = f'最後の更新から{no_uptime//3600}時'
         message += '間更新がありません。データの送信状況を確認してください。'
-        Slack().log(self.log.warning, message)
+        return message
 
     def stop(self, status: int, err):
         """status=0でWatch.loop()を正常終了する。
@@ -402,8 +403,11 @@ def main():
             watchdog.loop()
             watchdog.sleep()
         except KeyboardInterrupt:
-            watchdog.stop(0, 'キーボード入力により監視を正常終了しました。')
+            msg = 'キーボード入力により監視を正常終了しました。'
+            Slack().log(watchdog.log.info, msg)
+            watchdog.stop(0, msg)
         except FileNotFoundError as _e:
+            Slack().log(watchdog.log.error, f"エラーが発生しました。 {_e}")
             watchdog.stop(1, _e)
         except BaseException as _e:  # それ以外のエラーはエラー後sleep秒だけ待って再試行
             Slack().log(watchdog.log.error, f"エラーが発生しました。 {_e}")

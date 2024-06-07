@@ -15,6 +15,7 @@ class Slack:
     """Post info and error to slack channel"""
     _token: str = CONFIG['token']
     _channels: str = CONFIG['channel_id']
+    _users: list[str] = CONFIG['users']
     slack_post: bool = CONFIG['slack_post']
     client = WebClient(_token)
 
@@ -41,6 +42,21 @@ class Slack:
         usage:
             Slack().log(self.log.info, f'画像の出力に成功しました {filename}')
         """
+        func(message)  # log.info(message), log.error(message), ...
+        if cls.slack_post:
+            cls.message(message)
+        if err:
+            raise err
+
+    @classmethod
+    def mention(cls, func, message, err=None):
+        """特定のユーザーにメンションする
+        logging関数とSlack().message に同じメッセージを投げる
+        usage:
+            Slack().log(self.log.info, f'画像の出力に成功しました {filename}')
+        """
+        for user in cls._users:
+            message = f"<@{user}> {message}"
         func(message)  # log.info(message), log.error(message), ...
         if cls.slack_post:
             cls.message(message)
