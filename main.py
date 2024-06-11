@@ -91,9 +91,9 @@ class Watch:
         config_keys = [
             'check_rate',
             'glob',
-            'marker',
             'transfer_rate',
             'usecols',
+            'markers',
             # oneplot.plot_onefile option *args, **kwargs
             'color',
             'linewidth',
@@ -282,6 +282,7 @@ class Watch:
 
             # ファイルに更新があれば更新したwaterfall_update.pngを出力
             trss = tracer.read_traces(*files, usecols=Watch.config.usecols)
+            trss.set_merkers(Watch.config.markers)
             _n = DAY_SECOND // Watch.config.transfer_rate  # => 288
             num_of_files_ok = len(files) >= _n
             if self.debug:

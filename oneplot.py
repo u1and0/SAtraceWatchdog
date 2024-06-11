@@ -40,6 +40,7 @@ from pathlib import Path
 from typing import Optional
 import argparse
 import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
 from SAtraceWatchdog.tracer import read_trace, title_renamer, Trace, set_xticks
 

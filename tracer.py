@@ -116,14 +116,30 @@ class Trace(pd.DataFrame):
     # のような形式でconfig/config.jsonファイルに記述する
     _dirname = Path(__file__).parent
     _configfile = _dirname / 'config/config.json'
-    marker: list[float] = []
 
     def __init__(self, *args, **kwargs):
+        """
+        >>> trss = Trace(range(10))
+        >>> trss.markers = [0, 2.3, 4.9]
+        >>> trss.markers
+        [0, 2, 5]
+        """
         super().__init__(pd.DataFrame(*args, **kwargs))
-        if Path(Trace._configfile).exists():
-            _config = json_load_encode_with_bom(Trace._configfile)
-            Trace.marker = _config['marker']
-            Trace.marker.sort()
+        self._markers = None
+
+    @property
+    def markers(self):
+        """マーカープロパティのゲッター"""
+        return self._markers
+
+    @markers.setter
+    def markers(self, markers: list[float]):
+        """マーカープロパティのセッター
+        インデックスの値に最も近いものだけをマーカーとしてセットする
+        """
+        _index = pd.Series(self.index)
+        # self.merkerはpandas.Seriesからキリの良い数値に最も近い数値を探す
+        self._markers = [_index.find_closest(m) for m in markers]
 
     def noisefloor(self, *args, **kwargs):
         """ 1/4 quantileをノイズフロアとし、各列に適用して返す"""
@@ -203,7 +219,7 @@ class Trace(pd.DataFrame):
                        figsize=figsize,
                        ax=ax1)
         # Marker plot
-        maxs = self.reindex(self.marker).loc[self.marker].max(1)
+        maxs = self.reindex(self.markers).loc[self.markers].max(1)
         # `self.reindex()` for
         # KeyError: 'Passing list-likes to .loc or [] with
         # any missing labels is no longer supported
@@ -288,7 +304,7 @@ class Trace(pd.DataFrame):
 
     def plot_markers(self, *args, **kwargs):
         """marker plot as Diamond"""
-        slices = self.squeeze().reindex(self.marker).loc[self.marker]
+        slices = self.squeeze().reindex(self.markers).loc[self.markers]
         # reindex() put off Keyerror
         ax = slices.plot(style='rD', fillstyle='none', *args, **kwargs)
         return ax
@@ -311,7 +327,7 @@ class Trace(pd.DataFrame):
 def read_trace(
     data: str,
     config: dict = None,
-    usecols=None,  # overwrited arg
+    usecols: Optional[str] = None,  # overwrited arg
     *args,
     **kwargs,
 ) -> Trace:
@@ -365,12 +381,12 @@ def read_trace(
         points,
     )
     df.index.name = unit
-    if usecols:
+    if usecols is not None:
         df = df[usecols]  # Select cols
     return Trace(df)
 
 
-def read_traces(*files, usecols, **kwargs):
+def read_traces(*files, usecols: Optional[str] = None, **kwargs):
     """複数ファイルにread_trace()して1つのTraceにまとめる
 
     usecolsを指定しないとValueError
@@ -419,6 +435,11 @@ def mw2db(a):
     return 10 * np.log10(a)
 
 
+def _find_closest(se: pd.Series, tgt: float):
+    """pd.Seriesに含まれる最も近い値を出力する"""
+    return se.iloc[(se - tgt).abs().argmin()]
+
+
 # import tracer
 #    either
 # tracer.db2mw(df)
@@ -429,6 +450,8 @@ setattr(pd.Series, 'db2mw', db2mw)
 setattr(pd.DataFrame, 'db2mw', db2mw)
 setattr(pd.Series, 'mw2db', mw2db)
 setattr(pd.DataFrame, 'mw2db', mw2db)
+# series.find_closest(value) として登録
+setattr(pd.Series, "find_closest", _find_closest)
 
 
 def json_load_encode_with_bom(filename):
