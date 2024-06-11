@@ -36,13 +36,12 @@ for i in glob.glob('../data/*.txt')
 ```
 
 """
-import numpy as np
 from pathlib import Path
 from typing import Optional
 import argparse
 import matplotlib.pyplot as plt
 import seaborn as sns
-from SAtraceWatchdog.tracer import read_trace, title_renamer, Trace
+from SAtraceWatchdog.tracer import read_trace, title_renamer, Trace, set_xticks
 
 # グラフ描画オプション
 
@@ -83,17 +82,13 @@ def plot_onefile(filename,
                      **kwargs)
 
     # Generate array of grid & label
-    # shiftはnp.arangeで最大値が切り捨てられてしまうためにあえて小さい数字をいれる
-    shift = xticks_major_gap if xticks_major_gap else 0.000001
-    min_v, max_v = min(df.index), max(df.index) + shift
-    if xticks_major_gap is not None:
-        major_ticks = np.arange(min_v, max_v, xticks_major_gap)
-        ax.set_xticks(major_ticks)
-    if xticks_minor_gap is not None:
-        minor_ticks = np.arange(min_v, max_v, xticks_minor_gap)
-        ax.set_xticks(minor_ticks, minor=True)
-        ax.grid(which="minor")
-
+    set_xticks(
+        ax,
+        xticks_major_gap,
+        xticks_minor_gap,
+        min(df.index),
+        max(df.index),
+    )
     if ylabel is not None:
         plt.ylabel(ylabel)
 
