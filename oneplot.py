@@ -36,11 +36,13 @@ for i in glob.glob('../data/*.txt')
 ```
 
 """
+import numpy as np
 from pathlib import Path
+from typing import Optional
 import argparse
 import matplotlib.pyplot as plt
 import seaborn as sns
-from SAtraceWatchdog.tracer import read_trace, title_renamer, Trace, crop_ticks
+from SAtraceWatchdog.tracer import read_trace, title_renamer, Trace
 
 # グラフ描画オプション
 
@@ -59,11 +61,12 @@ def seaborn_option():
 
 
 def plot_onefile(filename,
-                 directory=None,
-                 column='AVER',
-                 shownoise=True,
-                 xticks=None,
-                 ylabel=None,
+                 directory=Path.cwd(),
+                 column: str = 'AVER',
+                 shownoise: bool = True,
+                 xticks_major_gap: Optional[float] = None,
+                 xticks_minor_gap: Optional[float] = None,
+                 ylabel: Optional[str] = None,
                  *args,
                  **kwargs):
     """スペクトラムファイル1ファイルをプロットします。
@@ -80,16 +83,16 @@ def plot_onefile(filename,
                      **kwargs)
 
     # Generate array of grid & label
-    # xticks is a tuple of arg for tracer.crop_ticks()
-    # xticks = (tick, minorticks, majorticks)
-    if xticks is not None:
-        # locs, labels = crop_ticks(df.index, *xticks)
-        # plt.xticks(locs, labels)
-        min_v, max_v = min(df.index), max(df.index)
-        major_ticks = np.arange(min_v, max_v, 1)
-        minor_ticks = np.arange(min_v, max_v, 0.5)
+    # shiftはnp.arangeで最大値が切り捨てられてしまうためにあえて小さい数字をいれる
+    shift = xticks_major_gap if xticks_major_gap else 0.000001
+    min_v, max_v = min(df.index), max(df.index) + shift
+    if xticks_major_gap is not None:
+        major_ticks = np.arange(min_v, max_v, xticks_major_gap)
         ax.set_xticks(major_ticks)
+    if xticks_minor_gap is not None:
+        minor_ticks = np.arange(min_v, max_v, xticks_minor_gap)
         ax.set_xticks(minor_ticks, minor=True)
+        ax.grid(which="minor")
 
     if ylabel is not None:
         plt.ylabel(ylabel)
@@ -97,12 +100,11 @@ def plot_onefile(filename,
     select.plot_markers(ax=ax, legend=False)
     if shownoise:
         select.plot_noisefloor()
-    if directory:
-        base = Path(filename).stem
-        plt.savefig(f'{directory}/{base}.png')
-        # ファイルに保存する時plt.close()しないと
-        # 複数プロットが1pngファイルに表示される
-        plt.close()  # reset plot
+    base = Path(filename).stem
+    plt.savefig(f'{directory}/{base}.png')
+    # ファイルに保存する時plt.close()しないと
+    # 複数プロットが1pngファイルに表示される
+    plt.close()  # reset plot
     return ax
 
 

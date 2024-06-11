@@ -215,11 +215,8 @@ class Watch:
                     linewidth=Watch.config.linewidth,
                     figsize=Watch.config.figsize,
                     shownoise=Watch.config.shownoise,
-                    xticks=(
-                        Watch.config.xticks,
-                        Watch.config.xgrids,
-                        Watch.config.xlabels,
-                    ),
+                    xticks_major_gap=Watch.config.xticks_major_gap,
+                    xticks_minor_gap=Watch.config.xticks_minor_gap,
                     ylim=(
                         Watch.config.ymin,
                         Watch.config.ymax,
