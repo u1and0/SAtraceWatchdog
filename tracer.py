@@ -3,6 +3,7 @@
 import datetime
 import json
 from pathlib import Path
+from typing import Optional
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -199,11 +200,12 @@ class Trace(pd.DataFrame):
         return df.db2mw().sum()
 
     def heatmap(self,
-                title,
-                xlabel='Frequency[kHz]',
-                yzlabel='Power[dBm]',
-                color='gray',
-                xticks=None,
+                title: str,
+                xlabel: str = 'Frequency[kHz]',
+                yzlabel: str = 'Power[dBm]',
+                color: str = 'gray',
+                xticks_major_gap: Optional[float] = None,
+                xticks_minor_gap: Optional[float] = None,
                 ylim=(-119, -20),
                 linewidth=.2,
                 figsize=(8, 12),
@@ -256,11 +258,16 @@ class Trace(pd.DataFrame):
                        markersize=5)
 
         # Generate array of grid & label
-        # xticks is a tuple of arg for tracer.crop_ticks()
-        # xticks = (tick, minorticks, majorticks)
-        if xticks is not None:
-            locs, labels = crop_ticks(self.index, *xticks)
-            plt.xticks(locs, labels)
+        # shiftはnp.arangeで最大値が切り捨てられてしまうためにあえて小さい数字をいれる
+        shift = xticks_major_gap if xticks_major_gap else 0.000001
+        min_v, max_v = min(self.index), max(self.index) + shift
+        if xticks_major_gap is not None:
+            major_ticks = np.arange(min_v, max_v, xticks_major_gap)
+            ax.set_xticks(major_ticks)
+        if xticks_minor_gap is not None:
+            minor_ticks = np.arange(min_v, max_v, xticks_minor_gap)
+            ax.set_xticks(minor_ticks, minor=True)
+            ax.grid(which="minor")
 
         # Plot modify
         plt.grid()
