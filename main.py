@@ -21,7 +21,7 @@ from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
 from SAtraceWatchdog import report
 
-VERSION = 'v0.6.11'
+VERSION = 'v1.0.0'
 DAY_SECOND = 60 * 60 * 24
 ROOT = Path(__file__).parent
 
@@ -99,11 +99,9 @@ class Watch:
             'linewidth',
             'figsize',
             'shownoise',
-            # oneplot.plot_onefile option
-            # locs, labels = tracer.crop_ticks(xticks, xgrids, xlabels)
-            'xticks',  # xticks:x軸最小幅
-            'xgrids',  # xgrids:x軸に引く補助線の間隔
-            'xlabels',  # xlabels:x軸に入れるラベルの間隔
+            # oneplot.plot_onefile option ax.set_xticks()
+            'xticks_major_gap',  # xticks_major_gap:x軸に引く主補助線の間隔,
+            'xticks_minor_gap',  # xticks_minor_gap:x軸に引く副補助線の間隔,
             # oneplot.plot_onefile option
             # yticks=np.linspace(ymin,ymax,ystep)
             'ymin',
@@ -215,11 +213,8 @@ class Watch:
                     linewidth=Watch.config.linewidth,
                     figsize=Watch.config.figsize,
                     shownoise=Watch.config.shownoise,
-                    xticks=(
-                        Watch.config.xticks,
-                        Watch.config.xgrids,
-                        Watch.config.xlabels,
-                    ),
+                    xticks_major_gap=Watch.config.xticks_major_gap,
+                    xticks_minor_gap=Watch.config.xticks_minor_gap,
                     ylim=(
                         Watch.config.ymin,
                         Watch.config.ymax,
@@ -297,11 +292,8 @@ class Watch:
             trss.heatmap(
                 title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
                 color=Watch.config.color,
-                xticks=(
-                    Watch.config.xticks,
-                    Watch.config.xgrids,
-                    Watch.config.xlabels,
-                ),
+                xticks_major_gap=Watch.config.xticks_major_gap,
+                xticks_minor_gap=Watch.config.xticks_minor_gap,
                 linewidth=Watch.config.linewidth,
                 figsize=Watch.config.h_figsize,
                 ylim=(

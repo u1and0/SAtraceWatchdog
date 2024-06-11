@@ -37,10 +37,11 @@ for i in glob.glob('../data/*.txt')
 
 """
 from pathlib import Path
+from typing import Optional
 import argparse
 import matplotlib.pyplot as plt
 import seaborn as sns
-from SAtraceWatchdog.tracer import read_trace, title_renamer, Trace, crop_ticks
+from SAtraceWatchdog.tracer import read_trace, title_renamer, Trace, set_xticks
 
 # グラフ描画オプション
 
@@ -59,11 +60,12 @@ def seaborn_option():
 
 
 def plot_onefile(filename,
-                 directory=None,
-                 column='AVER',
-                 shownoise=True,
-                 xticks=None,
-                 ylabel=None,
+                 directory=Path.cwd(),
+                 column: str = 'AVER',
+                 shownoise: bool = True,
+                 xticks_major_gap: Optional[float] = None,
+                 xticks_minor_gap: Optional[float] = None,
+                 ylabel: Optional[str] = None,
                  *args,
                  **kwargs):
     """スペクトラムファイル1ファイルをプロットします。
@@ -80,24 +82,24 @@ def plot_onefile(filename,
                      **kwargs)
 
     # Generate array of grid & label
-    # xticks is a tuple of arg for tracer.crop_ticks()
-    # xticks = (tick, minorticks, majorticks)
-    if xticks is not None:
-        locs, labels = crop_ticks(df.index, *xticks)
-        plt.xticks(locs, labels)
-
+    set_xticks(
+        ax,
+        xticks_major_gap,
+        xticks_minor_gap,
+        min(df.index),
+        max(df.index),
+    )
     if ylabel is not None:
         plt.ylabel(ylabel)
 
     select.plot_markers(ax=ax, legend=False)
     if shownoise:
         select.plot_noisefloor()
-    if directory:
-        base = Path(filename).stem
-        plt.savefig(f'{directory}/{base}.png')
-        # ファイルに保存する時plt.close()しないと
-        # 複数プロットが1pngファイルに表示される
-        plt.close()  # reset plot
+    base = Path(filename).stem
+    plt.savefig(f'{directory}/{base}.png')
+    # ファイルに保存する時plt.close()しないと
+    # 複数プロットが1pngファイルに表示される
+    plt.close()  # reset plot
     return ax
 
 

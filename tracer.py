@@ -3,6 +3,7 @@
 import datetime
 import json
 from pathlib import Path
+from typing import Optional
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -108,50 +109,6 @@ def fine_ticks(tick, deg):
                        int((tick.max() - tick.min()) / deg + 1))
 
 
-def crop_ticks(arr, tick, minorticks, majorticks):
-    """ tickごとに連なるリストarrから
-    minorticksごとにgrid線を引き
-    majorticksごとにlabelsを返す
-
-    majorticksごとに値を残したlabelsは文字列リスト(np.array)
-    残す値以外は空白文字''に置きかえる
-
-    * arr: array like
-    * tick: minimum substance between `arr`
-    * minorticks: keep `majorticks` frequency
-    * majorticks: keep `majorticks` frequency
-
-    >>> arr = np.linspace(53,55,41)
-    >>> arr
-    array([53.  , 53.05, 53.1 , 53.15, 53.2 , 53.25, 53.3 , 53.35, 53.4 ,
-           53.45, 53.5 , 53.55, 53.6 , 53.65, 53.7 , 53.75, 53.8 , 53.85,
-           53.9 , 53.95, 54.  , 54.05, 54.1 , 54.15, 54.2 , 54.25, 54.3 ,
-           54.35, 54.4 , 54.45, 54.5 , 54.55, 54.6 , 54.65, 54.7 , 54.75,
-           54.8 , 54.85, 54.9 , 54.95, 55.  ])
-    >>> crop_ticks(arr, .05, .25, 1)
-    (array([53.  , 53.25, 53.5 , 53.75, 54.  , 54.25, 54.5 , 54.75, 55.  ]), array(['53.0', '', '', '', '54.0', '', '', '', '55.0'], dtype='<U32'))
-    >>> crop_ticks(arr, .05, .25, .5)
-    (array([53.  , 53.25, 53.5 , 53.75, 54.  , 54.25, 54.5 , 54.75, 55.  ]), array(['53.0', '', '53.5', '', '54.0', '', '54.5', '', '55.0'],
-          dtype='<U32'))
-    """
-    if not tick <= minorticks <= majorticks:
-        raise ValueError('expected tick <= minorticks <= majorticks')
-
-    # Define label
-    start, stop = arr[0], arr[-1]
-    num = (stop - start) / minorticks + 1
-    # It will be ok use `np.arange()` instead like below
-    #   locs = list(np.arange(start, stop, minorticks))
-    # but float value take like 55.0000001 value
-    # so that incorrect `label` list
-    locs = np.linspace(start, stop, int(num))
-
-    # Define label
-    keep = [v for k, v in enumerate(arr) if k % (majorticks / tick) == 0]
-    labels = np.array([k if k in keep else '' for k in locs])
-    return locs, labels
-
-
 class Trace(pd.DataFrame):
     """pd.DataFrameのように扱えるTraceクラス"""
     # marker設定
@@ -199,11 +156,12 @@ class Trace(pd.DataFrame):
         return df.db2mw().sum()
 
     def heatmap(self,
-                title,
-                xlabel='Frequency[kHz]',
-                yzlabel='Power[dBm]',
-                color='gray',
-                xticks=None,
+                title: str,
+                xlabel: str = 'Frequency[kHz]',
+                yzlabel: str = 'Power[dBm]',
+                color: str = 'gray',
+                xticks_major_gap: Optional[float] = None,
+                xticks_minor_gap: Optional[float] = None,
                 ylim=(-119, -20),
                 linewidth=.2,
                 figsize=(8, 12),
@@ -256,11 +214,25 @@ class Trace(pd.DataFrame):
                        markersize=5)
 
         # Generate array of grid & label
-        # xticks is a tuple of arg for tracer.crop_ticks()
-        # xticks = (tick, minorticks, majorticks)
-        if xticks is not None:
-            locs, labels = crop_ticks(self.index, *xticks)
-            plt.xticks(locs, labels)
+        set_xticks(
+            ax,
+            xticks_major_gap,
+            xticks_minor_gap,
+            min(self.index),
+            max(self.index),
+        )
+        # shiftはnp.arangeで最大値が切り捨てられてしまうためにあえて小さい数字をいれる
+        if xticks_major_gap < xticks_minor_gap:
+            raise ValueError('expected xticks_major_gap > xticks_minor_gap')
+        shift = xticks_major_gap if xticks_major_gap else 0.000001
+        min_v, max_v = min(self.index), max(self.index) + shift
+        if xticks_major_gap is not None:
+            major_ticks = np.arange(min_v, max_v, xticks_major_gap)
+            ax.set_xticks(major_ticks)
+        if xticks_minor_gap is not None:
+            minor_ticks = np.arange(min_v, max_v, xticks_minor_gap)
+            ax.set_xticks(minor_ticks, minor=True)
+            ax.grid(which="minor")
 
         # Plot modify
         plt.grid()
@@ -470,6 +442,23 @@ def json_load_encode_with_bom(filename):
     with open(filename, 'r', encoding=encoding) as f:
         config = json.load(f)
     return config
+
+
+def set_xticks(ax, major_gap: Optional[float], minor_gap: Optional[float],
+               min_v: float, max_v: float):
+    """axのX軸の補助線を設定する"""
+    if major_gap < minor_gap:
+        raise ValueError('expected major_gap > minor_gap')
+    # shiftはnp.arangeで最大値が切り捨てられてしまうためにあえて小さい数字をいれる
+    shift = major_gap if major_gap else 0.000001
+    max_v += shift
+    if major_gap is not None:
+        major_ticks = np.arange(min_v, max_v, major_gap)
+        ax.set_xticks(major_ticks)
+    if minor_gap is not None:
+        minor_ticks = np.arange(min_v, max_v, minor_gap)
+        ax.set_xticks(minor_ticks, minor=True)
+        ax.grid(which="minor")
 
 
 if __name__ == '__main__':
