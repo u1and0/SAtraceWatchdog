@@ -232,8 +232,8 @@ class Watch:
             else:
                 filename = f"{self.directory}/{base}.png"
                 msg = f'画像の出力に成功しました {filename}'
-                Slack().log(self.log.info, msg)
-                Slack().upload(msg, filename)
+                # Slack().log(self.log.info, msg)
+                # Slack().upload(msg, filename)
             finally:
                 plt.close()
             # Reset count
