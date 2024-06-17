@@ -111,11 +111,6 @@ def fine_ticks(tick, deg):
 
 class Trace(pd.DataFrame):
     """pd.DataFrameのように扱えるTraceクラス"""
-    # marker設定
-    # "marker":[19.2, 19.8,22.2,24.2,23.4]
-    # のような形式でconfig/config.jsonファイルに記述する
-    _dirname = Path(__file__).parent
-    _configfile = _dirname / 'config/config.json'
 
     def __init__(self, *args, **kwargs):
         """
@@ -129,17 +124,19 @@ class Trace(pd.DataFrame):
 
     @property
     def markers(self):
-        """マーカープロパティのゲッター"""
+        """マーカープロパティのゲッター
+        selfとして定義されるDataFrameのIndexに最も近い値をマーカーとして内包する。
+        """
         return self._markers
 
     @markers.setter
-    def markers(self, markers: list[float]):
+    def markers(self, values: list[float]):
         """マーカープロパティのセッター
         インデックスの値に最も近いものだけをマーカーとしてセットする
         """
         _index = pd.Series(self.index)
         # self.merkerはpandas.Seriesからキリの良い数値に最も近い数値を探す
-        self._markers = [_index.find_closest(m) for m in markers]
+        self._markers = [_index.find_closest(m) for m in values]
 
     def noisefloor(self, *args, **kwargs):
         """ 1/4 quantileをノイズフロアとし、各列に適用して返す"""
@@ -237,21 +234,8 @@ class Trace(pd.DataFrame):
             min(self.index),
             max(self.index),
         )
-        # shiftはnp.arangeで最大値が切り捨てられてしまうためにあえて小さい数字をいれる
-        if xticks_major_gap < xticks_minor_gap:
-            raise ValueError('expected xticks_major_gap > xticks_minor_gap')
-        shift = xticks_major_gap if xticks_major_gap else 0.000001
-        min_v, max_v = min(self.index), max(self.index) + shift
-        if xticks_major_gap is not None:
-            major_ticks = np.arange(min_v, max_v, xticks_major_gap)
-            ax.set_xticks(major_ticks)
-        if xticks_minor_gap is not None:
-            minor_ticks = np.arange(min_v, max_v, xticks_minor_gap)
-            ax.set_xticks(minor_ticks, minor=True)
-            ax.grid(which="minor")
 
         # Plot modify
-        plt.grid()
         plt.ylabel(yzlabel)
         # Set yzlabel for color bar
         text_xpos = self.index[-1]
@@ -469,9 +453,22 @@ def json_load_encode_with_bom(filename):
 
 def set_xticks(ax, major_gap: Optional[float], minor_gap: Optional[float],
                min_v: float, max_v: float):
-    """axのX軸の補助線を設定する"""
-    if major_gap < minor_gap:
-        raise ValueError('expected major_gap > minor_gap')
+    """axのX軸の補助線を設定する
+
+    Args:
+    - ax (Axes): The Axes object where tick positions will be set.
+    - major_gap (float, optional): Gap size between the primary ticks (major). Defaults to None for no gap adjustment.
+    - minor_gap (float, optional): Gap size between secondary ticks (minor). Defaults to None for no gap adjustment.
+    - min_v (float): The minimum value on which to set major and minor ticks.
+    - max_v (float): The maximum value on which to set major and minor ticks.
+    """
+    major_is_float = major_gap is not None
+    minor_is_float = minor_gap is not None
+    if major_is_float and minor_is_float:
+        if major_gap < minor_gap:
+            raise ValueError(
+                'Expected "major_gap" to be larger than or equal to "minor_gap".'
+            )
     # shiftはnp.arangeで最大値が切り捨てられてしまうためにあえて小さい数字をいれる
     shift = major_gap if major_gap else 0.000001
     max_v += shift

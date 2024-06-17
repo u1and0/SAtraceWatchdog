@@ -205,6 +205,8 @@ class Watch:
         # txtファイルだけあってpngがないファイルに対して実行
 
         for base in update_files:
+            if self.debug:
+                Slack().log(print, f'[DEBUG] base file name {update_files}')
             try:
                 plot_onefile(
                     base + '.txt',
@@ -229,11 +231,13 @@ class Watch:
             except ZeroDivisionError as _e:
                 Slack().log(self.log.warning,
                             f'{base}: {_e}, txtファイルは送信されてきましたがデータが足りません')
-            else:
-                filename = f"{self.directory}/{base}.png"
-                msg = f'画像の出力に成功しました {filename}'
-                # Slack().log(self.log.info, msg)
-                # Slack().upload(msg, filename)
+            # oneplog の画像のslack通知を定義している文
+            # oneplog の画像のslack通知はrate limit exceedとならないように控える
+            # else:
+            # filename = f"{self.directory}/{base}.png"
+            # msg = f'画像の出力に成功しました {filename}'
+            # Slack().log(self.log.info, msg)
+            # Slack().upload(msg, filename)
             finally:
                 plt.close()
             # Reset count
@@ -282,7 +286,11 @@ class Watch:
 
             # ファイルに更新があれば更新したwaterfall_update.pngを出力
             trss = tracer.read_traces(*files, usecols=Watch.config.usecols)
-            trss.set_merkers(Watch.config.markers)
+            trss.markers = Watch.config.markers
+            if self.debug:
+                Slack().log(print, f'[DEBUG] {trss}')
+                Slack().log(print, f'[DEBUG] {trss.markers}')
+
             _n = DAY_SECOND // Watch.config.transfer_rate  # => 288
             num_of_files_ok = len(files) >= _n
             if self.debug:
@@ -400,7 +408,7 @@ def main():
             Slack().log(watchdog.log.info, msg)
             watchdog.stop(0, msg)
         except FileNotFoundError as _e:
-            Slack().log(watchdog.log.error, f"エラーが発生しました。 {_e}")
+            Slack().log(watchdog.log.error, f"ファイルが見つかりません {_e}")
             watchdog.stop(1, _e)
         except BaseException as _e:  # それ以外のエラーはエラー後sleep秒だけ待って再試行
             Slack().log(watchdog.log.error, f"エラーが発生しました。 {_e}")
