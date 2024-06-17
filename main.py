@@ -21,7 +21,7 @@ from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
 from SAtraceWatchdog import report
 
-VERSION = 'v1.0.0'
+VERSION = 'v1.0.1'
 DAY_SECOND = 60 * 60 * 24
 ROOT = Path(__file__).parent
 
@@ -232,8 +232,8 @@ class Watch:
             else:
                 filename = f"{self.directory}/{base}.png"
                 msg = f'画像の出力に成功しました {filename}'
-                Slack().log(self.log.info, msg)
-                Slack().upload(msg, filename)
+                # Slack().log(self.log.info, msg)
+                # Slack().upload(msg, filename)
             finally:
                 plt.close()
             # Reset count

@@ -14,7 +14,7 @@ CONFIG = json_load_encode_with_bom(CONFIGFILE)
 class Slack:
     """Post info and error to slack channel"""
     _token: str = CONFIG['token']
-    _channels: str = CONFIG['channel_id']
+    _channel: str = CONFIG['channel_id']
     _users: list[str] = CONFIG['users']
     slack_post: bool = CONFIG['slack_post']
     client = WebClient(_token)
@@ -23,7 +23,7 @@ class Slack:
     def upload(cls, message: str, filename: str):
         """slackに画像を投稿する"""
         cls.client.files_upload_v2(
-            channels=cls._channels,
+            channel=cls._channel,
             file=filename,
             title=filename,
         )
@@ -32,7 +32,7 @@ class Slack:
     def message(cls, message):
         """slackにメッセージを投稿する"""
         cls.client.chat_postMessage(
-            channel=cls._channels,
+            channel=cls._channel,
             text=message,
         )
 
