@@ -288,6 +288,9 @@ class Trace(pd.DataFrame):
 
     def plot_markers(self, *args, **kwargs):
         """marker plot as Diamond"""
+        # マーカーがなければ終了
+        if not self.markers or len(self.markers):
+            return
         slices = self.squeeze().reindex(self.markers).loc[self.markers]
         # reindex() put off Keyerror
         ax = slices.plot(style='rD', fillstyle='none', *args, **kwargs)
