@@ -227,6 +227,7 @@ class Watch:
                         Watch.config.ystep,
                     ),
                     ylabel='dBm',
+                    markers=Watch.config.markers,
                 )
             except ZeroDivisionError as _e:
                 Slack().log(self.log.warning,
