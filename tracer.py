@@ -165,7 +165,9 @@ class Trace(pd.DataFrame):
         dtype: float64
         >>> # RuntimeWarning: divide by zero encountered in log10
         """
-        df = self.loc[center - span / 2:center + span / 2]
+        start = center - span / 2
+        stop = center + span / 2
+        df = self.loc[start:stop]
         return df.db2mw().sum()
 
     def heatmap(self,
@@ -289,9 +291,9 @@ class Trace(pd.DataFrame):
     def plot_markers(self, *args, **kwargs):
         """marker plot as Diamond"""
         # マーカーがなければ終了
-        if not self.markers or len(self.markers):
+        if not self._markers or len(self._markers) < 1:
             return
-        slices = self.squeeze().reindex(self.markers).loc[self.markers]
+        slices = self.loc[self.markers]
         # reindex() put off Keyerror
         ax = slices.plot(style='rD', fillstyle='none', *args, **kwargs)
         return ax
