@@ -111,19 +111,32 @@ def fine_ticks(tick, deg):
 
 class Trace(pd.DataFrame):
     """pd.DataFrameのように扱えるTraceクラス"""
-    # marker設定
-    # "marker":[19.2, 19.8,22.2,24.2,23.4]
-    # のような形式でconfig/config.jsonファイルに記述する
-    _dirname = Path(__file__).parent
-    _configfile = _dirname / 'config/config.json'
-    marker: list[float] = []
 
     def __init__(self, *args, **kwargs):
+        """
+        >>> trss = Trace(range(10))
+        >>> trss.markers = [0, 2.3, 4.9]
+        >>> trss.markers
+        [0, 2, 5]
+        """
         super().__init__(pd.DataFrame(*args, **kwargs))
-        if Path(Trace._configfile).exists():
-            _config = json_load_encode_with_bom(Trace._configfile)
-            Trace.marker = _config['marker']
-            Trace.marker.sort()
+        self._markers = None
+
+    @property
+    def markers(self):
+        """マーカープロパティのゲッター
+        selfとして定義されるDataFrameのIndexに最も近い値をマーカーとして内包する。
+        """
+        return self._markers
+
+    @markers.setter
+    def markers(self, values: list[float]):
+        """マーカープロパティのセッター
+        インデックスの値に最も近いものだけをマーカーとしてセットする
+        """
+        _index = pd.Series(self.index)
+        # self.merkerはpandas.Seriesからキリの良い数値に最も近い数値を探す
+        self._markers = [_index.find_closest(m) for m in values]
 
     def noisefloor(self, *args, **kwargs):
         """ 1/4 quantileをノイズフロアとし、各列に適用して返す"""
@@ -152,7 +165,9 @@ class Trace(pd.DataFrame):
         dtype: float64
         >>> # RuntimeWarning: divide by zero encountered in log10
         """
-        df = self.loc[center - span / 2:center + span / 2]
+        start = center - span / 2
+        stop = center + span / 2
+        df = self.loc[start:stop]
         return df.db2mw().sum()
 
     def heatmap(self,
@@ -203,7 +218,7 @@ class Trace(pd.DataFrame):
                        figsize=figsize,
                        ax=ax1)
         # Marker plot
-        maxs = self.reindex(self.marker).loc[self.marker].max(1)
+        maxs = self.reindex(self.markers).loc[self.markers].max(1)
         # `self.reindex()` for
         # KeyError: 'Passing list-likes to .loc or [] with
         # any missing labels is no longer supported
@@ -221,21 +236,8 @@ class Trace(pd.DataFrame):
             min(self.index),
             max(self.index),
         )
-        # shiftはnp.arangeで最大値が切り捨てられてしまうためにあえて小さい数字をいれる
-        if xticks_major_gap < xticks_minor_gap:
-            raise ValueError('expected xticks_major_gap > xticks_minor_gap')
-        shift = xticks_major_gap if xticks_major_gap else 0.000001
-        min_v, max_v = min(self.index), max(self.index) + shift
-        if xticks_major_gap is not None:
-            major_ticks = np.arange(min_v, max_v, xticks_major_gap)
-            ax.set_xticks(major_ticks)
-        if xticks_minor_gap is not None:
-            minor_ticks = np.arange(min_v, max_v, xticks_minor_gap)
-            ax.set_xticks(minor_ticks, minor=True)
-            ax.grid(which="minor")
 
         # Plot modify
-        plt.grid()
         plt.ylabel(yzlabel)
         # Set yzlabel for color bar
         text_xpos = self.index[-1]
@@ -288,7 +290,10 @@ class Trace(pd.DataFrame):
 
     def plot_markers(self, *args, **kwargs):
         """marker plot as Diamond"""
-        slices = self.squeeze().reindex(self.marker).loc[self.marker]
+        # マーカーがなければ終了
+        if not self._markers or len(self._markers) < 1:
+            return
+        slices = self.loc[self.markers]
         # reindex() put off Keyerror
         ax = slices.plot(style='rD', fillstyle='none', *args, **kwargs)
         return ax
@@ -311,7 +316,7 @@ class Trace(pd.DataFrame):
 def read_trace(
     data: str,
     config: dict = None,
-    usecols=None,  # overwrited arg
+    usecols: Optional[str] = None,  # overwrited arg
     *args,
     **kwargs,
 ) -> Trace:
@@ -365,12 +370,12 @@ def read_trace(
         points,
     )
     df.index.name = unit
-    if usecols:
+    if usecols is not None:
         df = df[usecols]  # Select cols
     return Trace(df)
 
 
-def read_traces(*files, usecols, **kwargs):
+def read_traces(*files, usecols: Optional[str] = None, **kwargs):
     """複数ファイルにread_trace()して1つのTraceにまとめる
 
     usecolsを指定しないとValueError
@@ -419,6 +424,11 @@ def mw2db(a):
     return 10 * np.log10(a)
 
 
+def _find_closest(se: pd.Series, tgt: float):
+    """pd.Seriesに含まれる最も近い値を出力する"""
+    return se.iloc[(se - tgt).abs().argmin()]
+
+
 # import tracer
 #    either
 # tracer.db2mw(df)
@@ -429,6 +439,8 @@ setattr(pd.Series, 'db2mw', db2mw)
 setattr(pd.DataFrame, 'db2mw', db2mw)
 setattr(pd.Series, 'mw2db', mw2db)
 setattr(pd.DataFrame, 'mw2db', mw2db)
+# series.find_closest(value) として登録
+setattr(pd.Series, "find_closest", _find_closest)
 
 
 def json_load_encode_with_bom(filename):
@@ -446,9 +458,22 @@ def json_load_encode_with_bom(filename):
 
 def set_xticks(ax, major_gap: Optional[float], minor_gap: Optional[float],
                min_v: float, max_v: float):
-    """axのX軸の補助線を設定する"""
-    if major_gap < minor_gap:
-        raise ValueError('expected major_gap > minor_gap')
+    """axのX軸の補助線を設定する
+
+    Args:
+    - ax (Axes): The Axes object where tick positions will be set.
+    - major_gap (float, optional): Gap size between the primary ticks (major). Defaults to None for no gap adjustment.
+    - minor_gap (float, optional): Gap size between secondary ticks (minor). Defaults to None for no gap adjustment.
+    - min_v (float): The minimum value on which to set major and minor ticks.
+    - max_v (float): The maximum value on which to set major and minor ticks.
+    """
+    major_is_float = major_gap is not None
+    minor_is_float = minor_gap is not None
+    if major_is_float and minor_is_float:
+        if major_gap < minor_gap:
+            raise ValueError(
+                'Expected "major_gap" to be larger than or equal to "minor_gap".'
+            )
     # shiftはnp.arangeで最大値が切り捨てられてしまうためにあえて小さい数字をいれる
     shift = major_gap if major_gap else 0.000001
     max_v += shift

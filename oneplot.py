@@ -66,14 +66,19 @@ def plot_onefile(filename,
                  xticks_major_gap: Optional[float] = None,
                  xticks_minor_gap: Optional[float] = None,
                  ylabel: Optional[str] = None,
+                 markers: list[float] = [],
                  *args,
                  **kwargs):
     """スペクトラムファイル1ファイルをプロットします。
     directoryが指定されてたら、その場所に同じベースネームでpng形式に保存します。
     """
     seaborn_option()
+    # ファイルからデータを読み込む
     df = read_trace(filename)
+    # カラムを一つ選択
     select = Trace(df[column])
+    # マーカーを定義
+    select.markers = markers
 
     # Base chart
     ax = select.plot(title=title_renamer(filename),
