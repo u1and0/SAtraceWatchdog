@@ -11,13 +11,13 @@
 #           --log-directory /log \
 
 # ビルドコンテナ
-FROM python:3.12.3-bullseye as builder
+FROM python:3.12.3-bullseye AS builder
 WORKDIR /opt/app
 COPY requirements.txt /opt/app
 RUN pip install --upgrade -r requirements.txt
 
 # 実行コンテナ
-FROM python:3.12.3-slim-bullseye as runner
+FROM python:3.12.3-slim-bullseye AS runner
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 
 # Font & Timezone setting
