@@ -14,17 +14,18 @@ import pandas as pd
 
 
 def seaborn_option():
-    sns.set(context="notebook",
-            style="ticks",
-            palette='husl',
-            font="IPAGothic",
-            font_scale=1.5,
-            color_codes=False,
-            rc={
-                'grid.linestyle': ':',
-                'grid.color': 'gray',
-                'image.cmap': 'viridis'
-            })
+    sns.set(
+        context="notebook",
+        style="whitegrid",  # "ticks",
+        palette='husl',
+        font="IPAGothic",
+        font_scale=1.5,
+        color_codes=False,
+        rc={
+            'grid.linestyle': ':',
+            'grid.color': 'gray',
+            'image.cmap': 'viridis'
+        })
 
 
 def config_parse_freq(key: str) -> (int, str):
@@ -375,7 +376,7 @@ def read_trace(
     return Trace(df)
 
 
-def read_traces(*files, usecols: Optional[str] = None, **kwargs):
+def read_traces(*files, usecols: str, **kwargs):
     """複数ファイルにread_trace()して1つのTraceにまとめる
 
     usecolsを指定しないとValueError
