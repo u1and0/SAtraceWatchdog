@@ -171,6 +171,35 @@ class Trace(pd.DataFrame):
         df = self.loc[start:stop]
         return df.db2mw().sum()
 
+    def describe_SN(self, tgt_freq: float):
+        """ 特定周波数の統計値を求める。
+        @params
+            tgt_freq: float - ターゲット周波数
+        @return
+            {
+                ターゲット周波数(indexの中で最も近い値): float
+                受信電力: float
+                SN比:  float
+                ターゲット受信回数: float
+                全受信回数: float
+                受信割合: float
+            }
+        """
+        tgt = closest_index(self.index, tgt_freq)
+        tr = self.loc[tgt]  # ターゲット周波数のデータ
+        trs_sn = self - self.noisefloor()  # SN比
+        tr_sn = trs_sn.loc[tgt]
+        # カウント
+        true_count = (tr >= tr.quantile(.95)).sum()
+        return pd.Series({
+            "ターゲット周波数": tgt,
+            "受信電力": tr.quantile(.95),
+            "SN比": tr_sn.quantile(.95),
+            "ターゲット受信回数": true_count,
+            "全受信回数": len(tr),
+            "受信割合": true_count / len(tr)
+        })
+
     def heatmap(self,
                 title: str,
                 xlabel: str = 'Frequency[kHz]',
@@ -428,6 +457,11 @@ def mw2db(a):
 def _find_closest(se: pd.Series, tgt: float):
     """pd.Seriesに含まれる最も近い値を出力する"""
     return se.iloc[(se - tgt).abs().argmin()]
+
+
+def closest_index(ix: pd.Index, tgt: float) -> float:
+    """pd.Indexに含まれる最も近い値を出力する"""
+    return ix[np.argmin(np.abs(ix - tgt))]
 
 
 # import tracer
