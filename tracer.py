@@ -143,6 +143,10 @@ class Trace(pd.DataFrame):
         """ 1/4 quantileをノイズフロアとし、各列に適用して返す"""
         return self.quantile(0.25, *args, **kwargs)
 
+    def sn_ratio(self, *args, **kwargs):
+        """ノイズフロアを差し引いてSN比を算出する"""
+        return self - self.noisefloor(*args, **kwargs)
+
     def bandsignal(self, center, span):
         """centerから±spanのindexに対してのデシベル平均を返す
         >>> aa = np.arange(1, 11).T
@@ -171,10 +175,11 @@ class Trace(pd.DataFrame):
         df = self.loc[start:stop]
         return df.db2mw().sum()
 
-    def describe_SN(self, tgt_freq: float):
+    def describe_SN(self, tgt_freq: float, percentile=0.95):
         """ 特定周波数の統計値を求める。
         @params
             tgt_freq: float - ターゲット周波数
+            percentile: float - 最も高い値から何%の値を返すか。(default 95%)
         @return
             {
                 ターゲット周波数(indexの中で最も近い値): float
@@ -190,11 +195,11 @@ class Trace(pd.DataFrame):
         trs_sn = self - self.noisefloor()  # SN比
         tr_sn = trs_sn.loc[tgt]
         # カウント
-        true_count = (tr >= tr.quantile(.95)).sum()
+        true_count = (tr_sn >= 10).sum()
         return pd.Series({
             "ターゲット周波数": tgt,
-            "受信電力": tr.quantile(.95),
-            "SN比": tr_sn.quantile(.95),
+            "受信電力": tr.quantile(percentile),
+            "SN比": tr_sn.quantile(percentile),
             "ターゲット受信回数": true_count,
             "全受信回数": len(tr),
             "受信割合": true_count / len(tr)
