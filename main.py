@@ -114,11 +114,14 @@ class Watch:
             'save_heatmap',
             'file_format',
             'h_figsize',
+            'yzlabel',
+            'sn',
             'cmap',
             'cmaphigh',
             'cmaplow',
             'cmaplevel',
             'cmapstep',
+            'extend',
         ]
         Config = namedtuple('Config', config_keys)
         authorized_config = Config(**{k: config_dict[k] for k in config_keys})
@@ -343,6 +346,11 @@ class Watch:
 
             # ファイルに更新があれば更新したwaterfall_update.pngを出力
             trss = tracer.read_traces(*files, usecols=Watch.config.usecols)
+
+            # configで snがTrueの場合はS/N比になおす
+            if Watch.config.sn:
+                trss = trss.sn_ratio()
+
             trss.markers = Watch.config.markers
             if self.debug:
                 Slack().log(print, f'[DEBUG] {trss}')
@@ -366,11 +374,13 @@ class Watch:
                     Watch.config.ymin,
                     Watch.config.ymax,
                 ),
+                yzlabel=Watch.config.yzlabel,
                 cmap=Watch.config.cmap,
                 cmaphigh=Watch.config.cmaphigh,
                 cmaplow=Watch.config.cmaplow,
                 cmaplevel=Watch.config.cmaplevel,
                 cmapstep=Watch.config.cmapstep,
+                extend=Watch.config.extend,
             )
             plt.savefig(filename)
             # ファイルに保存するときplt.close()しないと
