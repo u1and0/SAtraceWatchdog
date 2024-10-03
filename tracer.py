@@ -145,7 +145,7 @@ class Trace(pd.DataFrame):
 
     def sn_ratio(self, *args, **kwargs):
         """ノイズフロアを差し引いてSN比を算出する"""
-        return self - self.noisefloor(*args, **kwargs)
+        return (self - self.noisefloor(*args, **kwargs)).to_trace()
 
     def bandsignal(self, center, span):
         """centerから±spanのindexに対してのデシベル平均を返す
@@ -205,22 +205,23 @@ class Trace(pd.DataFrame):
             "受信割合": true_count / len(tr)
         })
 
-    def heatmap(self,
-                title: str,
-                xlabel: str = 'Frequency[kHz]',
-                yzlabel: str = 'Power[dBm]',
-                color: str = 'gray',
-                xticks_major_gap: Optional[float] = None,
-                xticks_minor_gap: Optional[float] = None,
-                ylim=(-119, -20),
-                linewidth=.2,
-                figsize=(8, 12),
-                cmap='viridis',
-                cmaphigh: float = -60.0,
-                cmaplow: float = -100.0,
-                cmaplevel: int = 100,
-                cmapstep: int = 10,
-                extend='both'):
+    def heatmap(
+            self,
+            title: str,  # 日付 %y/%m/%d
+            xlabel: str = 'Frequency[kHz]',
+            yzlabel: str = 'Power[dBm]',
+            color: str = 'gray',
+            xticks_major_gap: Optional[float] = None,
+            xticks_minor_gap: Optional[float] = None,
+            ylim=(-119, -20),
+            linewidth=.2,
+            figsize=(8, 12),
+            cmap='viridis',
+            cmaphigh: float = -60.0,
+            cmaplow: float = -100.0,
+            cmaplevel: int = 100,
+            cmapstep: int = 10,
+            extend='both'):
         """スペクトラムプロット / ウォータフォール
         引数:
             self: Trace(pd.DataFrame)
@@ -253,15 +254,16 @@ class Trace(pd.DataFrame):
                        figsize=figsize,
                        ax=ax1)
         # Marker plot
-        maxs = self.reindex(self.markers).loc[self.markers].max(1)
-        # `self.reindex()` for
-        # KeyError: 'Passing list-likes to .loc or [] with
-        # any missing labels is no longer supported
-        ax = maxs.plot(style='rD',
-                       markeredgewidth=1,
-                       fillstyle='none',
-                       ax=ax1,
-                       markersize=5)
+        if (self.markers is not None) and (len(self.markers) > 0):
+            maxs = self.reindex(self.markers).loc[self.markers].max(1)
+            # `self.reindex()` for
+            # KeyError: 'Passing list-likes to .loc or [] with
+            # any missing labels is no longer supported
+            ax = maxs.plot(style='rD',
+                           markeredgewidth=1,
+                           fillstyle='none',
+                           ax=ax1,
+                           markersize=5)
 
         # Generate array of grid & label
         set_xticks(
@@ -307,6 +309,11 @@ class Trace(pd.DataFrame):
                           alpha=.75,
                           cmap=cmap,
                           extend=extend)
+        # 範囲外は白抜き
+        ax.cmap.set_over("white")
+        ax.cmap.set_under("white")
+        ax.changed()
+
         d5 = pd.date_range('00:00', '23:55',
                            freq=FREQ).strftime('%H:%M')  # 5分ごとの文字列
         d5 = np.append(d5, '24:00')  # 24:00は作れないのでappend
@@ -469,6 +476,10 @@ def closest_index(ix: pd.Index, tgt: float) -> float:
     return ix[np.argmin(np.abs(ix - tgt))]
 
 
+def to_trace(df: pd.DataFrame) -> Trace:
+    return Trace(df)
+
+
 # import tracer
 #    either
 # tracer.db2mw(df)
@@ -481,6 +492,16 @@ setattr(pd.Series, 'mw2db', mw2db)
 setattr(pd.DataFrame, 'mw2db', mw2db)
 # series.find_closest(value) として登録
 setattr(pd.Series, "find_closest", _find_closest)
+# Trace化
+setattr(pd.Series, "to_trace", to_trace)
+setattr(pd.DataFrame, "to_trace", to_trace)
+
+setattr(Trace, 'db2mw', db2mw)
+setattr(Trace, 'db2mw', db2mw)
+setattr(Trace, 'mw2db', mw2db)
+setattr(Trace, 'mw2db', mw2db)
+# series.find_closest(value) として登録
+setattr(Trace, "find_closest", _find_closest)
 
 
 def json_load_encode_with_bom(filename):
