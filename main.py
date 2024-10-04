@@ -21,7 +21,7 @@ from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
 from SAtraceWatchdog import report
 
-VERSION = 'v1.0.2'
+VERSION = 'v1.1.1'
 DAY_SECOND = 60 * 60 * 24
 ROOT = Path(__file__).parent
 
@@ -89,12 +89,15 @@ class Watch:
             raise FileNotFoundError(f'設定ファイル {Watch.configfile} が存在しません')
         config_dict = tracer.json_load_encode_with_bom(Watch.configfile)
         config_keys = [
-            'check_rate',
+            # falseでスラックへの通知を抑制する
+            'slack_post',  # bool
+            'check_rate',  # int
             'glob',
             'transfer_rate',
             'usecols',
             'markers',
             # oneplot.plot_onefile option *args, **kwargs
+            'save_spectrum',
             'color',
             'linewidth',
             'figsize',
@@ -108,12 +111,17 @@ class Watch:
             'ymax',
             'ystep',
             # tracer.Trace.heatmap() args
+            'save_heatmap',
+            'file_format',
             'h_figsize',
+            'yzlabel',
+            'sn',
             'cmap',
             'cmaphigh',
             'cmaplow',
             'cmaplevel',
             'cmapstep',
+            'extend',
         ]
         Config = namedtuple('Config', config_keys)
         authorized_config = Config(**{k: config_dict[k] for k in config_keys})
@@ -153,7 +161,10 @@ class Watch:
         # ファイル用ハンドラをルートロガーに追加
         root_logger.addHandler(file_handler)
 
-    def filename_resolver(self, yyyymmdd: str, remove_flag: bool) -> Path:
+    def filename_resolver(self,
+                          yyyymmdd: str,
+                          remove_flag: bool,
+                          ext="png") -> Path:
         """Decide waterfall filenamene
         return:
             waterfall_yymmdd_update.png
@@ -165,14 +176,17 @@ class Watch:
             waterfall_{yyyymmdd}.pngを返す
         ファイル数が一日分=288ファイルなければ
             waterfall_{yyyymmdd}_update.pngを返す
+
+        ext にはファイル拡張子が入る。
+            png, eps, jpg, pdf,...
+            see [matplotlib.pyplot.savefig](https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.savefig.html)
         """
-        pre = f'{self.directory}/waterfall_{yyyymmdd}'
-        filename = Path(pre + '_update.png')
+        filename = Path(f'{self.directory}/waterfall_{yyyymmdd}_update.{ext}')
         if remove_flag:  # ファイル数が一日分=288ファイルあったら
             # waterfall_{yyyymmdd}_update.pngを削除して、
             filename.unlink(missing_ok=True)  # ignore FileNotFoundError
             # waterfall_{yyyymmdd}.pngというファイル名を返す
-            filename = Path(pre + '.png')
+            filename = Path(f"{self.directory}/waterfall_{yyyymmdd}.{ext}")
         return filename
 
     def loop(self):
@@ -203,8 +217,54 @@ class Watch:
         # One file plot
         # ---
         # txtファイルだけあってpngがないファイルに対して実行
+        if Watch.config.save_spectrum:
+            # filename format must be [ %Y%m%d_%H%M%S.txt ]
+            self.save_spectrum_plot(update_files)
 
-        for base in update_files:
+        # ---
+        # Daily plot
+        # ---
+        if Watch.config.save_heatmap:
+            self.save_heatmap_plot(txts)
+
+    def sleep(self):
+        """Interval for next loop"""
+        if self.debug:
+            Slack().log(print,
+                        f'[DEBUG] sleeping... {Watch.config.check_rate}')
+        # remove progress bar after all
+        for _ in tqdm(range(Watch.config.check_rate), leave=False):
+            sleep(1)
+
+    def no_update_warning(self) -> str:
+        """更新がしばらくないときにWarning上げるメッセージを作成する"""
+        no_uptime = Watch.no_update_count * Watch.config.transfer_rate
+        if no_uptime < 60:
+            message = f'最後の更新から{no_uptime}秒'
+        elif no_uptime < 3600:
+            message = f'最後の更新から{no_uptime//60}分'
+        else:
+            message = f'最後の更新から{no_uptime//3600}時'
+        message += '間更新がありません。データの送信状況を確認してください。'
+        return message
+
+    def stop(self, status: int, err):
+        """status=0でWatch.loop()を正常終了する。
+        status=1でWatch.loop()を異常終了する。
+        """
+        if status == 0:
+            Slack().log(self.log.info, message=err)
+        else:
+            Slack().log(self.log.critical, message=err)
+        sys.exit(status)
+
+    def error(self, err):
+        """Tracebackをエラーに含める"""
+        trace_error = partial(self.log.error, exc_info=True)
+        Slack().log(trace_error, err)
+
+    def save_spectrum_plot(self, files: List[str]):
+        for base in files:
             if self.debug:
                 Slack().log(print, f'[DEBUG] base file name {update_files}')
             try:
@@ -251,10 +311,7 @@ class Watch:
                 Slack().mention(self.log.warning, msg)
                 Watch.no_update_threshold *= 2
 
-        # ---
-        # Daily plot
-        # ---
-        # filename format must be [ %Y%m%d_%H%M%S.txt ]
+    def save_heatmap_plot(self, txts: List[str]):
         days_set = {_[:8] for _ in txts}
         if self.debug:
             Slack().log(print, f'[DEBUG] day_set: {days_set}')
@@ -262,7 +319,8 @@ class Watch:
         for day in days_set:
             # waterfall_{day}.pngが存在すれば最終処理が完了しているので
             # waterfallをプロットしない -> 次のfor iterへ行く
-            if Path(f'{self.directory}/waterfall_{day}.png').exists():
+            if Path(f'{self.directory}/waterfall_{day}.{Watch.config.file_format}'
+                    ).exists():
                 continue
             # waterfall_{day}.pngが存在しなければ最終処理が完了していないので
             # waterfalll_{day}_update.pngを作成する
@@ -280,13 +338,19 @@ class Watch:
             # ファイルに更新がなければ次のfor iterへ行く
             noupdate = set(Watch.last_files[day]) == set(files)
             exists = Path(
-                f'{self.directory}/waterfall_{day}_update.png').exists()
+                f'{self.directory}/waterfall_{day}_update.{Watch.config.file_format}'
+            ).exists()
             if exists and noupdate:
                 continue
             Watch.last_files[day] = files
 
             # ファイルに更新があれば更新したwaterfall_update.pngを出力
             trss = tracer.read_traces(*files, usecols=Watch.config.usecols)
+
+            # configで snがTrueの場合はS/N比になおす
+            if Watch.config.sn:
+                trss = trss.sn_ratio()
+
             trss.markers = Watch.config.markers
             if self.debug:
                 Slack().log(print, f'[DEBUG] {trss}')
@@ -298,7 +362,7 @@ class Watch:
                 Slack().log(print, f'[DEBUG] limit: {_n}')
                 Slack().log(print, f'[DEBUG] length: {len(files)}')
             filename: Path = self.filename_resolver(
-                yyyymmdd=day, remove_flag=num_of_files_ok)
+                yyyymmdd=day, remove_flag=num_of_files_ok, ext="eps")
             trss.heatmap(
                 title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
                 color=Watch.config.color,
@@ -310,62 +374,29 @@ class Watch:
                     Watch.config.ymin,
                     Watch.config.ymax,
                 ),
+                yzlabel=Watch.config.yzlabel,
                 cmap=Watch.config.cmap,
                 cmaphigh=Watch.config.cmaphigh,
                 cmaplow=Watch.config.cmaplow,
                 cmaplevel=Watch.config.cmaplevel,
                 cmapstep=Watch.config.cmapstep,
+                extend=Watch.config.extend,
             )
             plt.savefig(filename)
             # ファイルに保存するときplt.close()しないと
             # 複数プロットが1pngファイルに表示される
             plt.close()  # reset plot
             # logdi = self.log.debug if self.debug else
-            msg = f'画像の出力に成功しました {filename}'
-            Slack().log(self.log.info, msg)
-            Slack().upload(msg, str(filename))
+            if Watch.config.slack_post:
+                msg = f'画像の出力に成功しました {filename}'
+                Slack().log(self.log.info, msg)
+                Slack().upload(msg, str(filename))
 
             # データの抜けを検証"""
             rate = '{}min'.format(Watch.config.transfer_rate // 60)
             droped_data = trss.guess_fallout(rate=rate)
             if len(droped_data) > 0:
                 Slack().log(self.log.warning, f'データが抜けています {droped_data}')
-
-    def sleep(self):
-        """Interval for next loop"""
-        if self.debug:
-            Slack().log(print,
-                        f'[DEBUG] sleeping... {Watch.config.check_rate}')
-        # remove progress bar after all
-        for _ in tqdm(range(Watch.config.check_rate), leave=False):
-            sleep(1)
-
-    def no_update_warning(self) -> str:
-        """更新がしばらくないときにWarning上げるメッセージを作成する"""
-        no_uptime = Watch.no_update_count * Watch.config.transfer_rate
-        if no_uptime < 60:
-            message = f'最後の更新から{no_uptime}秒'
-        elif no_uptime < 3600:
-            message = f'最後の更新から{no_uptime//60}分'
-        else:
-            message = f'最後の更新から{no_uptime//3600}時'
-        message += '間更新がありません。データの送信状況を確認してください。'
-        return message
-
-    def stop(self, status: int, err):
-        """status=0でWatch.loop()を正常終了する。
-        status=1でWatch.loop()を異常終了する。
-        """
-        if status == 0:
-            Slack().log(self.log.info, message=err)
-        else:
-            Slack().log(self.log.critical, message=err)
-        sys.exit(status)
-
-    def error(self, err):
-        """Tracebackをエラーに含める"""
-        trace_error = partial(self.log.error, exc_info=True)
-        Slack().log(trace_error, err)
 
 
 def parse():

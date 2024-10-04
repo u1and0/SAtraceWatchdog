@@ -14,17 +14,18 @@ import pandas as pd
 
 
 def seaborn_option():
-    sns.set(context="notebook",
-            style="ticks",
-            palette='husl',
-            font="IPAGothic",
-            font_scale=1.5,
-            color_codes=False,
-            rc={
-                'grid.linestyle': ':',
-                'grid.color': 'gray',
-                'image.cmap': 'viridis'
-            })
+    sns.set(
+        context="notebook",
+        style="whitegrid",  # "ticks",
+        palette='husl',
+        font="IPAGothic",
+        font_scale=1.5,
+        color_codes=False,
+        rc={
+            'grid.linestyle': ':',
+            'grid.color': 'gray',
+            'image.cmap': 'viridis'
+        })
 
 
 def config_parse_freq(key: str) -> (int, str):
@@ -142,6 +143,10 @@ class Trace(pd.DataFrame):
         """ 1/4 quantileをノイズフロアとし、各列に適用して返す"""
         return self.quantile(0.25, *args, **kwargs)
 
+    def sn_ratio(self, *args, **kwargs):
+        """ノイズフロアを差し引いてSN比を算出する"""
+        return (self - self.noisefloor(*args, **kwargs)).to_trace()
+
     def bandsignal(self, center, span):
         """centerから±spanのindexに対してのデシベル平均を返す
         >>> aa = np.arange(1, 11).T
@@ -170,22 +175,53 @@ class Trace(pd.DataFrame):
         df = self.loc[start:stop]
         return df.db2mw().sum()
 
-    def heatmap(self,
-                title: str,
-                xlabel: str = 'Frequency[kHz]',
-                yzlabel: str = 'Power[dBm]',
-                color: str = 'gray',
-                xticks_major_gap: Optional[float] = None,
-                xticks_minor_gap: Optional[float] = None,
-                ylim=(-119, -20),
-                linewidth=.2,
-                figsize=(8, 12),
-                cmap='viridis',
-                cmaphigh: float = -60.0,
-                cmaplow: float = -100.0,
-                cmaplevel: int = 100,
-                cmapstep: int = 10,
-                extend='both'):
+    def describe_SN(self, tgt_freq: float, percentile=0.95):
+        """ 特定周波数の統計値を求める。
+        @params
+            tgt_freq: float - ターゲット周波数
+            percentile: float - 最も高い値から何%の値を返すか。(default 95%)
+        @return
+            {
+                ターゲット周波数(indexの中で最も近い値): float
+                受信電力: float
+                SN比:  float
+                ターゲット受信回数: float
+                全受信回数: float
+                受信割合: float
+            }
+        """
+        tgt = closest_index(self.index, tgt_freq)
+        tr = self.loc[tgt]  # ターゲット周波数のデータ
+        trs_sn = self - self.noisefloor()  # SN比
+        tr_sn = trs_sn.loc[tgt]
+        # カウント
+        true_count = (tr_sn >= 10).sum()
+        return pd.Series({
+            "ターゲット周波数": tgt,
+            "受信電力": tr.quantile(percentile),
+            "SN比": tr_sn.quantile(percentile),
+            "ターゲット受信回数": true_count,
+            "全受信回数": len(tr),
+            "受信割合": true_count / len(tr)
+        })
+
+    def heatmap(
+            self,
+            title: str,  # 日付 %y/%m/%d
+            xlabel: str = 'Frequency[kHz]',
+            yzlabel: str = 'Power[dBm]',
+            color: str = 'gray',
+            xticks_major_gap: Optional[float] = None,
+            xticks_minor_gap: Optional[float] = None,
+            ylim=(-119, -20),
+            linewidth=.2,
+            figsize=(8, 12),
+            cmap='viridis',
+            cmaphigh: float = -60.0,
+            cmaplow: float = -100.0,
+            cmaplevel: int = 100,
+            cmapstep: int = 10,
+            extend='both'):
         """スペクトラムプロット / ウォータフォール
         引数:
             self: Trace(pd.DataFrame)
@@ -218,15 +254,16 @@ class Trace(pd.DataFrame):
                        figsize=figsize,
                        ax=ax1)
         # Marker plot
-        maxs = self.reindex(self.markers).loc[self.markers].max(1)
-        # `self.reindex()` for
-        # KeyError: 'Passing list-likes to .loc or [] with
-        # any missing labels is no longer supported
-        ax = maxs.plot(style='rD',
-                       markeredgewidth=1,
-                       fillstyle='none',
-                       ax=ax1,
-                       markersize=5)
+        if (self.markers is not None) and (len(self.markers) > 0):
+            maxs = self.reindex(self.markers).loc[self.markers].max(1)
+            # `self.reindex()` for
+            # KeyError: 'Passing list-likes to .loc or [] with
+            # any missing labels is no longer supported
+            ax = maxs.plot(style='rD',
+                           markeredgewidth=1,
+                           fillstyle='none',
+                           ax=ax1,
+                           markersize=5)
 
         # Generate array of grid & label
         set_xticks(
@@ -272,6 +309,11 @@ class Trace(pd.DataFrame):
                           alpha=.75,
                           cmap=cmap,
                           extend=extend)
+        # 範囲外は白抜き
+        ax.cmap.set_over("white")
+        ax.cmap.set_under("white")
+        ax.changed()
+
         d5 = pd.date_range('00:00', '23:55',
                            freq=FREQ).strftime('%H:%M')  # 5分ごとの文字列
         d5 = np.append(d5, '24:00')  # 24:00は作れないのでappend
@@ -375,7 +417,7 @@ def read_trace(
     return Trace(df)
 
 
-def read_traces(*files, usecols: Optional[str] = None, **kwargs):
+def read_traces(*files, usecols: str, **kwargs):
     """複数ファイルにread_trace()して1つのTraceにまとめる
 
     usecolsを指定しないとValueError
@@ -429,6 +471,15 @@ def _find_closest(se: pd.Series, tgt: float):
     return se.iloc[(se - tgt).abs().argmin()]
 
 
+def closest_index(ix: pd.Index, tgt: float) -> float:
+    """pd.Indexに含まれる最も近い値を出力する"""
+    return ix[np.argmin(np.abs(ix - tgt))]
+
+
+def to_trace(df: pd.DataFrame) -> Trace:
+    return Trace(df)
+
+
 # import tracer
 #    either
 # tracer.db2mw(df)
@@ -441,6 +492,16 @@ setattr(pd.Series, 'mw2db', mw2db)
 setattr(pd.DataFrame, 'mw2db', mw2db)
 # series.find_closest(value) として登録
 setattr(pd.Series, "find_closest", _find_closest)
+# Trace化
+setattr(pd.Series, "to_trace", to_trace)
+setattr(pd.DataFrame, "to_trace", to_trace)
+
+setattr(Trace, 'db2mw', db2mw)
+setattr(Trace, 'db2mw', db2mw)
+setattr(Trace, 'mw2db', mw2db)
+setattr(Trace, 'mw2db', mw2db)
+# series.find_closest(value) として登録
+setattr(Trace, "find_closest", _find_closest)
 
 
 def json_load_encode_with_bom(filename):
