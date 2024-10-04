@@ -3,6 +3,7 @@
 txtファイルとpngファイルの差分をチェックして、グラフ化されていないファイルだけpng化します。
 """
 import sys
+import os
 from typing import Dict, List, Any, Optional
 import argparse
 from time import sleep
@@ -12,7 +13,7 @@ import logging
 from logging import handlers
 from functools import partial
 from pathlib import Path
-from collections import namedtuple, defaultdict
+from collections import defaultdict
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -21,9 +22,11 @@ from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
 from SAtraceWatchdog import report
 
-VERSION = 'v1.1.1'
+VERSION = 'v2.0.0'
 DAY_SECOND = 60 * 60 * 24
 ROOT = Path(__file__).parent
+# watch_config=/mnt/z/config/config.json のように指定
+CONFIGFILE = os.getenv("WATCH_CONFIG", "./config/config.json")
 
 
 class Watch:
@@ -39,7 +42,6 @@ class Watch:
     =>stop()
     ( end )
     """
-    configfile = ROOT / 'config/config.json'
     # アップデートファイル保持
     config = None  # Watch.loop() の毎回のループで読み込み
     last_config: Optional[Dict[str, Any]] = None
@@ -79,53 +81,6 @@ class Watch:
             message = f'{makedir.resolve()} はディレクトリではありません'
             raise IOError(message)
         return makedir
-
-    def load_config(self):
-        """configの読み込み
-        config.json を読み込み、
-        config_keysに指定されたワードのみをConfigとして返す
-        """
-        if not Path(Watch.configfile).exists():
-            raise FileNotFoundError(f'設定ファイル {Watch.configfile} が存在しません')
-        config_dict = tracer.json_load_encode_with_bom(Watch.configfile)
-        config_keys = [
-            # falseでスラックへの通知を抑制する
-            'slack_post',  # bool
-            'check_rate',  # int
-            'glob',
-            'transfer_rate',
-            'usecols',
-            'markers',
-            # oneplot.plot_onefile option *args, **kwargs
-            'save_spectrum',
-            'color',
-            'linewidth',
-            'figsize',
-            'shownoise',
-            # oneplot.plot_onefile option ax.set_xticks()
-            'xticks_major_gap',  # xticks_major_gap:x軸に引く主補助線の間隔,
-            'xticks_minor_gap',  # xticks_minor_gap:x軸に引く副補助線の間隔,
-            # oneplot.plot_onefile option
-            # yticks=np.linspace(ymin,ymax,ystep)
-            'ymin',
-            'ymax',
-            'ystep',
-            # tracer.Trace.heatmap() args
-            'save_heatmap',
-            'file_format',
-            'h_figsize',
-            'yzlabel',
-            'sn',
-            'cmap',
-            'cmaphigh',
-            'cmaplow',
-            'cmaplevel',
-            'cmapstep',
-            'extend',
-        ]
-        Config = namedtuple('Config', config_keys)
-        authorized_config = Config(**{k: config_dict[k] for k in config_keys})
-        return authorized_config
 
     def set_logger(self):
         """コンソール用ロガーハンドラと
@@ -193,7 +148,7 @@ class Watch:
         """pngファイルの出力とログ出力の無限ループ"""
         # config file読込
         # ループごとに毎回jsonを読みに行く
-        Watch.config = self.load_config()
+        Watch.config = tracer.json_load_encode_with_bom(CONFIGFILE)
         # 前回のconfigとことなる内容が読み込まれたらログに出力
         if not Watch.config == Watch.last_config:
             Watch.last_config = Watch.config
@@ -205,6 +160,7 @@ class Watch:
         txts = {Path(i).stem for i in glob.iglob(f'{pattern}.txt')}
         pngs = {Path(i).stem for i in glob.iglob(f'{out}/{pattern}.png')}
         update_files = txts - pngs
+        sorted_files = sorted(list(update_files))
 
         # Count report
         _counts = report.timestamp_count(
@@ -219,13 +175,13 @@ class Watch:
         # txtファイルだけあってpngがないファイルに対して実行
         if Watch.config.save_spectrum:
             # filename format must be [ %Y%m%d_%H%M%S.txt ]
-            self.save_spectrum_plot(update_files)
+            self.save_spectrum_plot(sorted_files)
 
         # ---
         # Daily plot
         # ---
         if Watch.config.save_heatmap:
-            self.save_heatmap_plot(txts)
+            self.save_heatmap_plot(sorted_files)
 
     def sleep(self):
         """Interval for next loop"""
@@ -351,6 +307,7 @@ class Watch:
             if Watch.config.sn:
                 trss = trss.sn_ratio()
 
+            # 特定の周波数のスペクトラムにマーカーを打つため、マーカーをセット
             trss.markers = Watch.config.markers
             if self.debug:
                 Slack().log(print, f'[DEBUG] {trss}')
@@ -361,8 +318,14 @@ class Watch:
             if self.debug:
                 Slack().log(print, f'[DEBUG] limit: {_n}')
                 Slack().log(print, f'[DEBUG] length: {len(files)}')
+
+            # ファイル名の決定
             filename: Path = self.filename_resolver(
-                yyyymmdd=day, remove_flag=num_of_files_ok, ext="eps")
+                yyyymmdd=day,
+                remove_flag=num_of_files_ok,
+                ext=Watch.config.file_format)
+
+            # ヒートマップの描画
             trss.heatmap(
                 title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
                 color=Watch.config.color,
@@ -382,7 +345,10 @@ class Watch:
                 cmapstep=Watch.config.cmapstep,
                 extend=Watch.config.extend,
             )
-            plt.savefig(filename)
+            plt.savefig(
+                filename,
+                dpi=Watch.config.dpi,
+            )
             # ファイルに保存するときplt.close()しないと
             # 複数プロットが1pngファイルに表示される
             plt.close()  # reset plot
