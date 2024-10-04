@@ -4,6 +4,7 @@ import datetime
 import json
 from pathlib import Path
 from typing import Optional
+from types import SimpleNamespace
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -513,7 +514,9 @@ def json_load_encode_with_bom(filename):
     is_with_bom = firstline[0] == '\ufeff'
     encoding = 'utf-8-sig' if is_with_bom else 'utf-8'
     with open(filename, 'r', encoding=encoding) as f:
-        config = json.load(f)
+        # プロパティアクセスするためにSimpleNamespaceを使う
+        # config.property.name ができる
+        config = json.load(f, object_hook=lambda x: SimpleNamespace(**x))
     return config
 
 
