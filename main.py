@@ -13,7 +13,7 @@ import logging
 from logging import handlers
 from functools import partial
 from pathlib import Path
-from collections import namedtuple, defaultdict
+from collections import defaultdict
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -22,7 +22,7 @@ from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
 from SAtraceWatchdog import report
 
-VERSION = 'v1.1.1'
+VERSION = 'v2.0.0'
 DAY_SECOND = 60 * 60 * 24
 ROOT = Path(__file__).parent
 # watch_config=/mnt/z/config/config.json のように指定
@@ -160,6 +160,7 @@ class Watch:
         txts = {Path(i).stem for i in glob.iglob(f'{pattern}.txt')}
         pngs = {Path(i).stem for i in glob.iglob(f'{out}/{pattern}.png')}
         update_files = txts - pngs
+        sorted_files = sorted(list(update_files))
 
         # Count report
         _counts = report.timestamp_count(
@@ -174,13 +175,13 @@ class Watch:
         # txtファイルだけあってpngがないファイルに対して実行
         if Watch.config.save_spectrum:
             # filename format must be [ %Y%m%d_%H%M%S.txt ]
-            self.save_spectrum_plot(update_files)
+            self.save_spectrum_plot(sorted_files)
 
         # ---
         # Daily plot
         # ---
         if Watch.config.save_heatmap:
-            self.save_heatmap_plot(txts)
+            self.save_heatmap_plot(sorted_files)
 
     def sleep(self):
         """Interval for next loop"""
@@ -306,6 +307,7 @@ class Watch:
             if Watch.config.sn:
                 trss = trss.sn_ratio()
 
+            # 特定の周波数のスペクトラムにマーカーを打つため、マーカーをセット
             trss.markers = Watch.config.markers
             if self.debug:
                 Slack().log(print, f'[DEBUG] {trss}')
@@ -316,8 +318,14 @@ class Watch:
             if self.debug:
                 Slack().log(print, f'[DEBUG] limit: {_n}')
                 Slack().log(print, f'[DEBUG] length: {len(files)}')
+
+            # ファイル名の決定
             filename: Path = self.filename_resolver(
-                yyyymmdd=day, remove_flag=num_of_files_ok, ext="eps")
+                yyyymmdd=day,
+                remove_flag=num_of_files_ok,
+                ext=Watch.config.file_format)
+
+            # ヒートマップの描画
             trss.heatmap(
                 title=f'{day[:4]}/{day[4:6]}/{day[6:8]}',
                 color=Watch.config.color,
@@ -337,7 +345,10 @@ class Watch:
                 cmapstep=Watch.config.cmapstep,
                 extend=Watch.config.extend,
             )
-            plt.savefig(filename)
+            plt.savefig(
+                filename,
+                dpi=Watch.config.dpi,
+            )
             # ファイルに保存するときplt.close()しないと
             # 複数プロットが1pngファイルに表示される
             plt.close()  # reset plot

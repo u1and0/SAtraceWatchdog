@@ -207,22 +207,24 @@ class Trace(pd.DataFrame):
         })
 
     def heatmap(
-            self,
-            title: str,  # 日付 %y/%m/%d
-            xlabel: str = 'Frequency[kHz]',
-            yzlabel: str = 'Power[dBm]',
-            color: str = 'gray',
-            xticks_major_gap: Optional[float] = None,
-            xticks_minor_gap: Optional[float] = None,
-            ylim=(-119, -20),
-            linewidth=.2,
-            figsize=(8, 12),
-            cmap='viridis',
-            cmaphigh: float = -60.0,
-            cmaplow: float = -100.0,
-            cmaplevel: int = 100,
-            cmapstep: int = 10,
-            extend='both'):
+        self,
+        title: str,  # 日付 %y/%m/%d
+        xlabel: str = 'Frequency[kHz]',
+        yzlabel: str = 'Power[dBm]',
+        color: str = 'gray',
+        xticks_major_gap: Optional[float] = None,
+        xticks_minor_gap: Optional[float] = None,
+        ylim=(-119, -20),
+        linewidth=.2,
+        figsize=(8, 12),
+        cmap='viridis',
+        cmaphigh: float = -60.0,
+        cmaplow: float = -100.0,
+        cmaplevel: int = 100,
+        cmapstep: int = 10,
+        extend='both',
+        dpi=100,
+    ):
         """スペクトラムプロット / ウォータフォール
         引数:
             self: Trace(pd.DataFrame)
