@@ -312,10 +312,6 @@ class Trace(pd.DataFrame):
                           alpha=.75,
                           cmap=cmap,
                           extend=extend)
-        # 範囲外は白抜き
-        ax.cmap.set_over("white")
-        ax.cmap.set_under("white")
-        ax.changed()
 
         d5 = pd.date_range('00:00', '23:55',
                            freq=FREQ).strftime('%H:%M')  # 5分ごとの文字列
