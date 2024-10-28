@@ -30,6 +30,8 @@ import matplotlib.pyplot as plt
 from sklearn.mixture import GaussianMixture
 # from scipy.stats import gaussian_kde
 
+_GMM_CLASSIFY_ERROR = "GMM.classify()を先に実行してください。"
+
 
 @dataclass
 class Cluster:
@@ -82,7 +84,7 @@ class GMM:
         # self.labels = None  # predictで得られたラベルを格納
         # self.probs = None  # predict_probaで得られた確率を格納
 
-    def predict(self) -> Cluster:
+    def classify(self) -> Cluster:
         """
         GMMを用いてデータを2つのクラスターに分類する。
         """
@@ -98,12 +100,22 @@ class GMM:
         cluster = Cluster(means, stds, weights)
         return cluster
 
+    def predict(self, X) -> np.array:
+        """ gmmで分類したラベルを0または1のArrayで返します。
+        低い山で1, 高い山で0が返ります。
+        pd.Series型を渡すときは `se.values.reshape(-1,1)` をする必要があります。
+        """
+        if self.gmm is None:
+            raise ValueError(_GMM_CLASSIFY_ERROR)
+
+        return self.gmm.predict(X)
+
     def plot(self, density=True, **kwargs):
         """
         ヒストグラムとカーネル密度推定、GMMの推定分布を描画する。
         """
         if self.gmm is None:
-            raise ValueError("predictメソッドを先に実行してください。")
+            raise ValueError(_GMM_CLASSIFY_ERROR)
 
         data = pd.Series(self.data)
         X = data.values.reshape(-1, 1)
