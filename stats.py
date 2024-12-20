@@ -9,13 +9,27 @@ Gaussinan Mixture Modelにより2値に分類して、
 Usage:
 
 # 分析初期化
-gmm = GMM(data)
+>>> gmm = GMM(data)
+cluster = gmm.classify()
 
 # 2値に分類
-cluster = gmm.predict()
+>>> power = np.arange(-100, -20, 20).reshape(-1, 1)
+# array([[-100], [ -80], [ -60], [ -40]])
+
+>>> gmm.predict(power)
+array([0, 0, 1, 1])
+
+-80未満は0なので未受信状態、
+-80以上は1なので受信状態。
 
 # 2つの郡の平均、標準偏差、重みをテーブルで表示する。
-cluster.summary()
+>>> cluster.summary()
+|    |          非受信  | 受信 |
+| 平均	|       -85.93  | -49.18 |
+| 標準偏差 |	5.41    | 7.26 |
+| 重み |	    0.89    | 0.11 |
+
+実際はpd.DataFrameで返ってくる
 
 # ヒストグラムのほか、
 # カーネル密度推定（KDE）を行って滑らかな山を描画する。
