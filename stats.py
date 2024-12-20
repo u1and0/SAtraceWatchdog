@@ -89,46 +89,79 @@ class GMM:
 
         Args:
             data : 解析対象のデータ
+
+        Gaussian Mixture Model for classifying data into two groups.
+
+        Args:
+            data (Iterable): The input data for analysis. Can be a pandas Series,
+                numpy array, or other iterable.
         """
         if isinstance(data, pd.Series):
             self.data = data.to_numpy().ravel()
         elif isinstance(data, np.ndarray):
             self.data = data.ravel()
         else:
-            self.data = data
+            self.data = np.array(data).ravel()  # Ensure data is a NumPy array
         self.gmm: Optional[GaussianMixture] = None
-        # self.labels = None  # predictで得られたラベルを格納
-        # self.probs = None  # predict_probaで得られた確率を格納
+        self._cluster: Optional[Cluster] = None  # Store the cluster object
 
     def classify(self) -> Cluster:
         """
         GMMを用いてデータを2つのクラスターに分類する。
+        Fits the GMM to the data and returns the cluster information.
         """
-        X = np.array(self.data).reshape(-1, 1)
+        X = self.data.reshape(-1, 1)
         self.gmm = GaussianMixture(n_components=2, random_state=42)
-        # GMMとして予測して分類
         self.gmm.fit(X)
 
-        # gmmの特徴量をClusterクラスに格納する
         means = self.gmm.means_.flatten()
         stds = np.sqrt(self.gmm.covariances_.flatten())
         weights = self.gmm.weights_
-        cluster = Cluster(means, stds, weights)
-        return cluster
 
-    def predict(self, X) -> np.array:
-        """ gmmで分類したラベルを0または1のArrayで返します。
+        self._cluster = Cluster(means, stds, weights)
+        return self._cluster
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        """
+        gmmで分類したラベルを0または1のArrayで返します。
         低い山で1, 高い山で0が返ります。
         pd.Series型を渡すときは `se.values.reshape(-1,1)` をする必要があります。
+
+        Predicts cluster labels (0 or 1) for given input data. Lower mean gets label 1.
+
+        Args:
+            X (np.ndarray): The data for prediction, should be a numpy array.
+            Must be reshaped to (-1, 1) if it's a single feature.
+
+        Returns:
+             np.ndarray: Predicted labels (0 or 1).
         """
         if self.gmm is None:
             raise ValueError(_GMM_CLASSIFY_ERROR)
 
-        return self.gmm.predict(X)
+        if isinstance(X, pd.Series):
+            X = X.values.reshape(-1, 1)
+        elif isinstance(X, np.ndarray):
+            X = X.reshape(-1, 1)
 
-    def plot(self, **kwargs):
+        labels = self.gmm.predict(X)
+
+        # Ensure lower mean is labeled as 1
+        if self._cluster is not None and len(self._cluster.means) == 2:
+            if self._cluster.means[0] > self._cluster.means[1]:
+                labels = np.array([1 if x == 0 else 0 for x in labels])
+        return labels
+
+    def plot(self, ax=None, **kwargs):
         """
-        ヒストグラムとカーネル密度推定、GMMの推定分布を描画する。
+        Plots the histogram, kernel density estimate, and estimated GMM distribution.
+
+        Args:
+            ax (matplotlib.axes.Axes, optional): Axes object to plot on. Creates a
+                new figure if None. Defaults to None.
+             **kwargs: Arguments passed to `pd.Series.hist` for customizing the histogram.
+        Returns:
+              matplotlib.axes.Axes: Axes object.
         """
         if self.gmm is None:
             raise ValueError(_GMM_CLASSIFY_ERROR)
@@ -136,9 +169,14 @@ class GMM:
         X = self.data.reshape(-1, 1)
         x_plot = np.linspace(X.min(), X.max(), 1000).reshape(-1, 1)
         log_prob = self.gmm.score_samples(x_plot)
-        # サブプロットで、データとKDEを同時にプロット
-        fig, ax = plt.subplots()
-        pd.Series(self.data).plot.hist(bins=40, alpha=.6, ax=ax,
-                                       **kwargs)  # axを追加
-        ax.plot(x_plot, np.exp(log_prob), "k--", label="推定された分布")
+
+        if ax is None:
+            fig, ax = plt.subplots()
+
+        pd.Series(self.data).plot.hist(bins=40, alpha=0.6, ax=ax, **kwargs)
+        ax.plot(
+            x_plot,
+            np.exp(log_prob),
+            "k--",
+        )
         return ax
