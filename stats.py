@@ -51,6 +51,10 @@ class Cluster:
     def summary(self) -> pd.DataFrame:
         """
         2つのクラスターの平均、標準偏差、重みを表示する。
+
+        - 平均: 山の平均値
+        - 標準偏差: σ, 山のばらつき。平均±2σで95%が存在する
+        - 重み: 存在の割合
         """
         # 高・低の山の結果を表示
         higher_peak_idx = np.argmax(self.means)
@@ -74,12 +78,24 @@ class GMM:
 
     def __init__(self, data: Iterable):
         """
+        Gaussinan Mixture Modelにより2値に分類して、
+        ヒストグラムの形状を受信している郡と受信していない郡に分ける。
+
+        また、それぞれの山の平均値、標準偏差、重み(混合比)といった特徴から
+        受信、非受信時のS/N比や受信比率を特定する。
+
+        Usage:
         GMMクラスの初期化
 
         Args:
             data : 解析対象のデータ
         """
-        self.data = data
+        if isinstance(data, pd.Series):
+            self.data = data.to_numpy().ravel()
+        elif isinstance(data, np.ndarray):
+            self.data = data.ravel()
+        else:
+            self.data = data
         self.gmm: Optional[GaussianMixture] = None
         # self.labels = None  # predictで得られたラベルを格納
         # self.probs = None  # predict_probaで得られた確率を格納
@@ -110,20 +126,19 @@ class GMM:
 
         return self.gmm.predict(X)
 
-    def plot(self, density=True, **kwargs):
+    def plot(self, **kwargs):
         """
         ヒストグラムとカーネル密度推定、GMMの推定分布を描画する。
         """
         if self.gmm is None:
             raise ValueError(_GMM_CLASSIFY_ERROR)
 
-        data = pd.Series(self.data)
-        X = data.values.reshape(-1, 1)
+        X = self.data.reshape(-1, 1)
         x_plot = np.linspace(X.min(), X.max(), 1000).reshape(-1, 1)
         log_prob = self.gmm.score_samples(x_plot)
         # サブプロットで、データとKDEを同時にプロット
         fig, ax = plt.subplots()
-        data.plot.hist(bins=40, alpha=.6, density=density, ax=ax,
-                       **kwargs)  # axを追加
+        pd.Series(self.data).plot.hist(bins=40, alpha=.6, ax=ax,
+                                       **kwargs)  # axを追加
         ax.plot(x_plot, np.exp(log_prob), "k--", label="推定された分布")
         return ax

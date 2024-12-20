@@ -3,7 +3,7 @@
 import datetime
 import json
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 from types import SimpleNamespace
 import numpy as np
 import seaborn as sns
@@ -470,9 +470,9 @@ def _find_closest(se: pd.Series, tgt: float):
     return se.iloc[(se - tgt).abs().argmin()]
 
 
-def closest_index(ix: pd.Index, tgt: float) -> float:
+def closest_index(ix: pd.Index, *tgts: float) -> List[float]:
     """pd.Indexに含まれる最も近い値を出力する"""
-    return ix[np.argmin(np.abs(ix - tgt))]
+    return [ix[np.argmin(np.abs(ix - tgt))] for tgt in tgts]
 
 
 def to_trace(df: pd.DataFrame) -> Trace:
