@@ -166,7 +166,7 @@ class GMM:
                 labels = np.array([1 if x == 0 else 0 for x in labels])
         return labels
 
-    def plot(self, ax=None, **kwargs):
+    def plot(self, density=True, alpha=0.8, ax=None, bins=40, **kwargs):
         """
         Plots the histogram, kernel density estimate, and estimated GMM distribution.
 
@@ -180,17 +180,23 @@ class GMM:
         if self.gmm is None:
             raise ValueError(_GMM_CLASSIFY_ERROR)
 
-        X = self.data.reshape(-1, 1)
-        x_plot = np.linspace(X.min(), X.max(), 1000).reshape(-1, 1)
-        log_prob = self.gmm.score_samples(x_plot)
-
+        # サブプロットで、データとKDEを同時にプロット
         if ax is None:
             fig, ax = plt.subplots()
 
-        pd.Series(self.data).plot.hist(bins=40, alpha=0.6, ax=ax, **kwargs)
-        ax.plot(
-            x_plot,
-            np.exp(log_prob),
-            "k--",
-        )
+        pd.Series(self.data).plot.hist(alpha=alpha,
+                                       density=density,
+                                       ax=ax,
+                                       bins=bins,
+                                       **kwargs)
+        if density:
+            # density=Trueとしないと表示が潰れて見えない
+            X = self.data.reshape(-1, 1)
+            x_plot = np.linspace(X.min(), X.max(), 1000).reshape(-1, 1)
+            log_prob = self.gmm.score_samples(x_plot)
+            ax.plot(x_plot,
+                    np.exp(log_prob),
+                    color="gray",
+                    ls="--",
+                    alpha=alpha)
         return ax
