@@ -279,17 +279,20 @@ class Trace(pd.DataFrame):
 
         # Plot modify
         plt.ylabel(yzlabel)
+
         # Set yzlabel for color bar
-        text_xpos = self.index[-1]
-        text_ypos = self.min().min()
-        plt.text(
-            text_xpos * 1.01,
-            text_ypos * 0.8,
-            f'←{yzlabel}',
-            rotation='vertical',
-            fontsize=18,
-        )
+        # text_xpos = self.index[-1]
+        # text_ypos = self.min().min()
+        # 位置がずれることがあるので、非表示にする。
+        # plt.text(
+        #     text_xpos * 1.01,
+        #     text_ypos * 0.8,
+        #     f'←{yzlabel}',
+        #     rotation='vertical',
+        #     fontsize=18,
+        # )
         # Set Marker plot ticks
+
         ax.xaxis.set_ticks_position('top')  # xラベル上にする
         ax.yaxis.set_ticks_position('left')
 
