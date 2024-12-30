@@ -22,7 +22,7 @@ from SAtraceWatchdog.oneplot import plot_onefile
 from SAtraceWatchdog.slack import Slack
 from SAtraceWatchdog import report
 
-VERSION = 'v2.0.0'
+VERSION = 'v2.0.1'
 DAY_SECOND = 60 * 60 * 24
 ROOT = Path(__file__).parent
 # watch_config=/mnt/z/config/config.json のように指定
